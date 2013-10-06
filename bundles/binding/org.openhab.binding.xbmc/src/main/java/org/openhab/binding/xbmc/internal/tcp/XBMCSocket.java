@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashSet;
@@ -21,6 +22,10 @@ public class XBMCSocket {
 
 	public static interface XBMCSocketListener {
 		public void jsonReceived(String json);
+
+		public void connected();
+
+		public void disconnected();
 	}
 
 	private String xbmcHost;
@@ -35,6 +40,8 @@ public class XBMCSocket {
 
 	private ReadThread readThread;
 
+	private boolean connected;
+
 	public XBMCSocket(String host, int port) {
 		this.xbmcHost = host;
 		this.xbmcPort = port;
@@ -42,17 +49,24 @@ public class XBMCSocket {
 
 	public void open() throws XBMCSocketException {
 		try {
-			xbmcSocket = new Socket(xbmcHost, xbmcPort);
+			xbmcSocket = new Socket();
+			xbmcSocket.connect(new InetSocketAddress(xbmcHost, xbmcPort));
 			InputStream is = xbmcSocket.getInputStream();
 			OutputStream os = xbmcSocket.getOutputStream();
 			bw = new BufferedWriter(new OutputStreamWriter(os));
 			br = new BufferedReader(new InputStreamReader(is));
+			connected = true;
 			readThread = new ReadThread();
 			readThread.start();
+			notifyConnected();
 		} catch (UnknownHostException e) {
+			connected = false;
+			notifyDisconnected();
 			logger.error("Can't connect to XBMC host", e);
 			throw new XBMCSocketException(e);
 		} catch (IOException e) {
+			connected = false;
+			notifyDisconnected();
 			logger.error("Can't connect to XBMC host", e);
 			throw new XBMCSocketException(e);
 		}
@@ -60,7 +74,13 @@ public class XBMCSocket {
 	}
 
 	public void close() {
-		readThread.interrupt();
+		connected = false;
+		try {
+			xbmcSocket.close();
+		} catch (IOException e) {
+			logger.warn("Error while closing socket", e);
+		}
+		xbmcSocket = null;
 	}
 
 	public void writeJsonString(String json) throws XBMCSocketException {
@@ -68,6 +88,8 @@ public class XBMCSocket {
 			bw.write(json);
 			bw.flush();
 		} catch (IOException e) {
+			connected = false;
+			notifyDisconnected();
 			throw new XBMCSocketException(e);
 		}
 	}
@@ -84,6 +106,18 @@ public class XBMCSocket {
 		}
 	}
 
+	private void notifyConnected() {
+		for (XBMCSocketListener listener : listeners) {
+			listener.connected();
+		}
+	}
+
+	private void notifyDisconnected() {
+		for (XBMCSocketListener listener : listeners) {
+			listener.disconnected();
+		}
+	}
+
 	private class ReadThread extends Thread {
 
 		private int braceCounter = 0;
@@ -92,7 +126,7 @@ public class XBMCSocket {
 
 		@Override
 		public void run() {
-			while (!interrupted()) {
+			while (connected) {
 				try {
 					int readValue = (char) br.read();
 					if (readValue > 0) {
@@ -116,6 +150,8 @@ public class XBMCSocket {
 					}
 				} catch (IOException e) {
 					logger.error("Can't read from socket", e);
+					connected = false;
+					notifyDisconnected();
 				}
 			}
 		}

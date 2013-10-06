@@ -1,7 +1,8 @@
 package org.openhab.binding.xbmc;
 
-import org.openhab.binding.xbmc.internal.tcp.XBMCSocket;
-import org.openhab.binding.xbmc.internal.tcp.XBMCSocket.XBMCSocketListener;
+import org.openhab.binding.xbmc.internal.client.XBMCClient;
+import org.openhab.binding.xbmc.internal.client.XBMCClient.XBMCListener;
+import org.openhab.binding.xbmc.internal.client.messages.data.PlayPauseStopData;
 import org.openhab.binding.xbmc.internal.tcp.XBMCSocketException;
 
 public class TestMain {
@@ -10,22 +11,32 @@ public class TestMain {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		System.out.println("Connectig to XBMX");
-		XBMCSocket socket = new XBMCSocket("192.168.100.50", 9090);
-		socket.registerListener(new XBMCSocketListener() {
-
-			@Override
-			public void jsonReceived(String json) {
-				System.out.println("Received new JSON:");
-				System.out.println(json);
-				System.out
-						.println("----------------------------------------------------------------------------------");
-
-			}
-		});
+		System.out.println("Connecting to XBMC");
+		XBMCClient client = new XBMCClient();
 		try {
-			socket.open();
-			System.out.println("Connected to XBMC");
+			client.registerPlayListener(new XBMCListener() {
+
+				@Override
+				public void onStop(PlayPauseStopData playPauseStopData) {
+					// TODO Auto-generated method stub
+
+				}
+
+				@Override
+				public void onPlay(PlayPauseStopData playPauseData) {
+					System.out.println("XBMC is playing something");
+					System.out.println("XBMC is playing a " + playPauseData.getItem().getType());
+
+				}
+
+				@Override
+				public void onPause(PlayPauseStopData playPauseData) {
+					// TODO Auto-generated method stub
+
+				}
+			});
+			client.open("192.168.100.50", 9090);
+			System.out.println("Successfully connected to XBMC");
 			while (true) {
 				try {
 					Thread.sleep(100);
@@ -38,7 +49,5 @@ public class TestMain {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
 	}
-
 }
