@@ -70,7 +70,13 @@ public class XBMCClient implements XBMCSocketListener {
 		try {
 			ReceivedMessage message = objectMapper.readValue(json, ReceivedMessage.class);
 			XBMCEventType event = XBMCEventType.getByMethodName(message.getMethod());
-			parseData(message.getParams(), event.getDataClass(), event);
+			switch (event) {
+			case ON_PAUSE:
+			case ON_PLAY:
+			case ON_STOP:
+				handlePlayPauseStop(event, message.getParams());
+				break;
+			}
 		} catch (JsonParseException e) {
 			logger.error("Can't parse received json message: " + json, e);
 		} catch (JsonMappingException e) {
@@ -80,11 +86,26 @@ public class XBMCClient implements XBMCSocketListener {
 		}
 	}
 
-	private <D extends XBMCData> void parseData(XBMCParams params, Class<D> clazz, XBMCEventType eventType) {
+	private void handlePlayPauseStop(XBMCEventType eventType, XBMCParams params) {
+		PlayPauseStopData data = (PlayPauseStopData) parseData(params, eventType.getDataClass(), eventType);
+		for (XBMCPlayListener listener : playListeners) {
+			switch (eventType) {
+			case ON_PAUSE:
+				listener.onPause(data);
+				break;
+			case ON_PLAY:
+				listener.onPlay(data);
+			case ON_STOP:
+				listener.onStop(data);
+			}
+		}
+	}
+
+	private <D extends XBMCData> D parseData(XBMCParams params, Class<D> clazz, XBMCEventType eventType) {
 		String jsonString = params.getData().toString();
 		try {
 			D data = objectMapper.readValue(jsonString, clazz);
-
+			return data;
 		} catch (JsonParseException e) {
 			logger.error("Can't parse Data: " + jsonString, e);
 		} catch (JsonMappingException e) {
@@ -92,6 +113,7 @@ public class XBMCClient implements XBMCSocketListener {
 		} catch (IOException e) {
 			logger.error("Can't parse Data: " + jsonString, e);
 		}
+		return null;
 	}
 
 	@Override
