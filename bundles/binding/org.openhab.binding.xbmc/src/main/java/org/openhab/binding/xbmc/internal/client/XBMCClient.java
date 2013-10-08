@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -62,14 +63,34 @@ public class XBMCClient implements XBMCSocketListener {
 		socket.registerListener(this);
 		socket.open();
 	}
-	
+
 	public void open() throws XBMCSocketException {
-		open(host,port);
+		open(host, port);
 	}
 
 	public void close() {
 		running = false;
 		socket.close();
+	}
+
+	public void write(XBMCMessage message) {
+		String jsonString;
+		try {
+			jsonString = objectMapper.writeValueAsString(message);
+			socket.writeJsonString(jsonString);
+		} catch (JsonGenerationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (XBMCSocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
