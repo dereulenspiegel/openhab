@@ -1,7 +1,7 @@
 package org.openhab.binding.xbmc.internal.client.messages;
 
 
-public class ReceivedMessage {
+public class XBMCMessage {
 
 	private String jsonrpc;
 	private String method;

@@ -7,7 +7,7 @@ import java.util.Set;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.openhab.binding.xbmc.internal.client.messages.ReceivedMessage;
+import org.openhab.binding.xbmc.internal.client.messages.XBMCMessage;
 import org.openhab.binding.xbmc.internal.client.messages.XBMCParams;
 import org.openhab.binding.xbmc.internal.client.messages.data.PlayPauseStopData;
 import org.openhab.binding.xbmc.internal.client.messages.data.XBMCData;
@@ -22,11 +22,11 @@ public class XBMCClient implements XBMCSocketListener {
 	private final static Logger logger = LoggerFactory.getLogger(XBMCClient.class);
 
 	public static interface XBMCPlayListener {
-		public void onPlay(PlayPauseStopData data);
+		public void onPlay(XBMCEventType type, PlayPauseStopData data);
 
-		public void onPause(PlayPauseStopData data);
+		public void onPause(XBMCEventType type, PlayPauseStopData data);
 
-		public void onStop(PlayPauseStopData data);
+		public void onStop(XBMCEventType type, PlayPauseStopData data);
 	}
 
 	private XBMCSocket socket;
@@ -36,6 +36,9 @@ public class XBMCClient implements XBMCSocketListener {
 	private Set<XBMCPlayListener> playListeners = new HashSet<XBMCClient.XBMCPlayListener>();
 
 	private boolean running = false;
+
+	private String host;
+	private int port;
 
 	public XBMCClient() {
 
@@ -59,6 +62,10 @@ public class XBMCClient implements XBMCSocketListener {
 		socket.registerListener(this);
 		socket.open();
 	}
+	
+	public void open() throws XBMCSocketException {
+		open(host,port);
+	}
 
 	public void close() {
 		running = false;
@@ -68,7 +75,7 @@ public class XBMCClient implements XBMCSocketListener {
 	@Override
 	public void jsonReceived(String json) {
 		try {
-			ReceivedMessage message = objectMapper.readValue(json, ReceivedMessage.class);
+			XBMCMessage message = objectMapper.readValue(json, XBMCMessage.class);
 			XBMCEventType event = XBMCEventType.getByMethodName(message.getMethod());
 			switch (event) {
 			case ON_PAUSE:
@@ -91,12 +98,12 @@ public class XBMCClient implements XBMCSocketListener {
 		for (XBMCPlayListener listener : playListeners) {
 			switch (eventType) {
 			case ON_PAUSE:
-				listener.onPause(data);
+				listener.onPause(eventType, data);
 				break;
 			case ON_PLAY:
-				listener.onPlay(data);
+				listener.onPlay(eventType, data);
 			case ON_STOP:
-				listener.onStop(data);
+				listener.onStop(eventType, data);
 			}
 		}
 	}
@@ -135,5 +142,21 @@ public class XBMCClient implements XBMCSocketListener {
 			}
 		}
 
+	}
+
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(String host) {
+		this.host = host;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
 	}
 }

@@ -28,9 +28,22 @@
  */
 package org.openhab.binding.xbmc.internal;
 
+import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.openhab.binding.xbmc.XBMCBindingProvider;
+import org.openhab.binding.xbmc.internal.client.XBMCClient;
+import org.openhab.binding.xbmc.internal.client.XBMCClient.XBMCPlayListener;
+import org.openhab.binding.xbmc.internal.client.XBMCEventType;
+import org.openhab.binding.xbmc.internal.client.messages.data.PlayPauseStopData;
+import org.openhab.binding.xbmc.internal.tcp.XBMCSocketException;
 
 import org.apache.commons.lang.StringUtils;
 import org.openhab.core.binding.AbstractActiveBinding;
@@ -42,15 +55,44 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Implement this class if you are going create an actively polling service like
- * querying a Website/Device.
- * 
  * @author Till Klocke
  * @since 1.3.0
  */
 public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> implements ManagedService {
 
+	private class PlayPauseStopListener implements XBMCPlayListener {
+
+		private String deviceId;
+
+		public PlayPauseStopListener(String deviceId) {
+			this.deviceId = deviceId;
+		}
+
+		@Override
+		public void onPlay(XBMCEventType type, PlayPauseStopData data) {
+			playPauseStopEventReceived(deviceId, type, data);
+
+		}
+
+		@Override
+		public void onPause(XBMCEventType type, PlayPauseStopData data) {
+			playPauseStopEventReceived(deviceId, type, data);
+
+		}
+
+		@Override
+		public void onStop(XBMCEventType type, PlayPauseStopData data) {
+			playPauseStopEventReceived(deviceId, type, data);
+
+		}
+
+	}
+
 	private static final Logger logger = LoggerFactory.getLogger(XBMCBinding.class);
+
+	private Map<String, XBMCClient> clientMap = new HashMap<String, XBMCClient>();
+
+	private static final Pattern EXTRACT_CONFIG_PATTERN = Pattern.compile("^(.*?)\\.(host|port)$");
 
 	/**
 	 * the refresh interval which is used to poll values from the XBMC server
@@ -65,8 +107,9 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	}
 
 	public void deactivate() {
-		// deallocate resources here that are no longer needed and
-		// should be reset when activating this binding again
+		for (XBMCClient client : clientMap.values()) {
+			client.close();
+		}
 	}
 
 	/**
@@ -130,11 +173,69 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 			if (StringUtils.isNotBlank(refreshIntervalString)) {
 				refreshInterval = Long.parseLong(refreshIntervalString);
 			}
+			Enumeration<String> keys = config.keys();
 
-			// read further config parameters here ...
+			while (keys.hasMoreElements()) {
+				String key = (String) keys.nextElement();
 
+				// the config-key enumeration contains additional keys that we
+				// don't want to process here ...
+				if ("service.pid".equals(key)) {
+					continue;
+				}
+
+				Matcher matcher = EXTRACT_CONFIG_PATTERN.matcher(key);
+
+				if (!matcher.matches()) {
+					logger.debug("given config key '" + key
+							+ "' does not follow the expected pattern '<id>.<host|port>'");
+					continue;
+				}
+
+				matcher.reset();
+				matcher.find();
+
+				String deviceId = matcher.group(1);
+
+				XBMCClient client = clientMap.get(deviceId);
+				if (client == null) {
+					client = new XBMCClient();
+					client.registerPlayListener(new PlayPauseStopListener(deviceId));
+					clientMap.put(deviceId, client);
+				}
+
+				String configKey = matcher.group(2);
+				String value = (String) config.get(key);
+
+				if ("host".equals(configKey)) {
+					client.setHost(value);
+				} else if ("port".equals(configKey)) {
+					int port = Integer.valueOf(value);
+					client.setPort(port);
+				} else {
+					throw new ConfigurationException(configKey, "the given configKey '" + configKey + "' is unknown");
+				}
+			}
+			List<String> failedClientKeys = new ArrayList<String>();
+			for (Entry<String, XBMCClient> clientEntry : clientMap.entrySet()) {
+				try {
+					clientEntry.getValue().open();
+				} catch (XBMCSocketException e) {
+					failedClientKeys.add(clientEntry.getKey());
+					logger.error("Can't connect with XBMC instance " + clientEntry.getKey(), e);
+				}
+			}
+			for (String s : failedClientKeys) {
+				XBMCClient client = clientMap.get(s);
+				client.close();
+				clientMap.remove(s);
+			}
 			setProperlyConfigured(true);
 		}
+	}
+
+	private void playPauseStopEventReceived(String deviceId, XBMCEventType type, PlayPauseStopData data) {
+		
 	}
 
 }
