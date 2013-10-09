@@ -1,9 +1,8 @@
 package org.openhab.binding.xbmc.internal.client.messages;
 
-
 public class XBMCMessage {
 
-	private String jsonrpc;
+	private String jsonrpc = "2.0";
 	private String method;
 	private XBMCParams params;
 

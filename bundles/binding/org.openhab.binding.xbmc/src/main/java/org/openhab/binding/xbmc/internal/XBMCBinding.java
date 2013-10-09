@@ -38,14 +38,11 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.binding.xbmc.internal.client.XBMCClient;
-import org.openhab.binding.xbmc.internal.client.XBMCClient.XBMCPlayListener;
-import org.openhab.binding.xbmc.internal.client.XBMCEventType;
 import org.openhab.binding.xbmc.internal.client.messages.data.PlayPauseStopData;
 import org.openhab.binding.xbmc.internal.tcp.XBMCSocketException;
-
-import org.apache.commons.lang.StringUtils;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -59,34 +56,6 @@ import org.slf4j.LoggerFactory;
  * @since 1.3.0
  */
 public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> implements ManagedService {
-
-	private class PlayPauseStopListener implements XBMCPlayListener {
-
-		private String deviceId;
-
-		public PlayPauseStopListener(String deviceId) {
-			this.deviceId = deviceId;
-		}
-
-		@Override
-		public void onPlay(XBMCEventType type, PlayPauseStopData data) {
-			playPauseStopEventReceived(deviceId, type, data);
-
-		}
-
-		@Override
-		public void onPause(XBMCEventType type, PlayPauseStopData data) {
-			playPauseStopEventReceived(deviceId, type, data);
-
-		}
-
-		@Override
-		public void onStop(XBMCEventType type, PlayPauseStopData data) {
-			playPauseStopEventReceived(deviceId, type, data);
-
-		}
-
-	}
 
 	private static final Logger logger = LoggerFactory.getLogger(XBMCBinding.class);
 
@@ -200,7 +169,6 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 				XBMCClient client = clientMap.get(deviceId);
 				if (client == null) {
 					client = new XBMCClient();
-					client.registerPlayListener(new PlayPauseStopListener(deviceId));
 					clientMap.put(deviceId, client);
 				}
 
@@ -232,10 +200,6 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 			}
 			setProperlyConfigured(true);
 		}
-	}
-
-	private void playPauseStopEventReceived(String deviceId, XBMCEventType type, PlayPauseStopData data) {
-		
 	}
 
 }

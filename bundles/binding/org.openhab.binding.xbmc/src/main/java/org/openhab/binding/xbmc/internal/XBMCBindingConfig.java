@@ -1,6 +1,5 @@
 package org.openhab.binding.xbmc.internal;
 
-import org.openhab.binding.xbmc.internal.client.XBMCEventType;
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
 import org.openhab.core.types.Command;
@@ -12,7 +11,7 @@ public class XBMCBindingConfig implements BindingConfig {
 
 	private String deviceId;
 	private Item item;
-	private Multimap<Command, XBMCEventType> commandMap = HashMultimap.create();
+	private Multimap<Command, BindingTypes> commandMap = HashMultimap.create();
 
 	public Item getItem() {
 		return item;
@@ -22,15 +21,15 @@ public class XBMCBindingConfig implements BindingConfig {
 		this.item = item;
 	}
 
-	public Multimap<Command, XBMCEventType> getCommandMap() {
+	public Multimap<Command, BindingTypes> getCommandMap() {
 		return commandMap;
 	}
 
-	public void setCommandMap(Multimap<Command, XBMCEventType> commandMap) {
+	public void setCommandMap(Multimap<Command, BindingTypes> commandMap) {
 		this.commandMap = commandMap;
 	}
 
-	public void addCommandMapping(Command command, XBMCEventType type) {
+	public void addCommandMapping(Command command, BindingTypes type) {
 		commandMap.put(command, type);
 	}
 

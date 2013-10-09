@@ -10,7 +10,6 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.openhab.binding.xbmc.internal.client.messages.XBMCMessage;
 import org.openhab.binding.xbmc.internal.client.messages.XBMCParams;
-import org.openhab.binding.xbmc.internal.client.messages.data.PlayPauseStopData;
 import org.openhab.binding.xbmc.internal.client.messages.data.XBMCData;
 import org.openhab.binding.xbmc.internal.tcp.XBMCSocket;
 import org.openhab.binding.xbmc.internal.tcp.XBMCSocket.XBMCSocketListener;
@@ -22,19 +21,15 @@ public class XBMCClient implements XBMCSocketListener {
 
 	private final static Logger logger = LoggerFactory.getLogger(XBMCClient.class);
 
-	public static interface XBMCPlayListener {
-		public void onPlay(XBMCEventType type, PlayPauseStopData data);
-
-		public void onPause(XBMCEventType type, PlayPauseStopData data);
-
-		public void onStop(XBMCEventType type, PlayPauseStopData data);
+	public static interface XBMCClientListener {
+		public void messageReceived(XBMCMessage message);
 	}
 
 	private XBMCSocket socket;
 
 	private ObjectMapper objectMapper = new ObjectMapper();
 
-	private Set<XBMCPlayListener> playListeners = new HashSet<XBMCClient.XBMCPlayListener>();
+	private Set<XBMCClientListener> listeners = new HashSet<XBMCClient.XBMCClientListener>();
 
 	private boolean running = false;
 
@@ -45,15 +40,15 @@ public class XBMCClient implements XBMCSocketListener {
 
 	}
 
-	public void registerPlayListener(XBMCPlayListener listener) {
+	public void registerListener(XBMCClientListener listener) {
 		if (listener != null) {
-			playListeners.add(listener);
+			listeners.add(listener);
 		}
 	}
 
-	public void unregisterPlayListener(XBMCPlayListener listener) {
+	public void unregisterListener(XBMCClientListener listener) {
 		if (listener != null) {
-			playListeners.remove(listener);
+			listeners.remove(listener);
 		}
 	}
 
@@ -97,13 +92,9 @@ public class XBMCClient implements XBMCSocketListener {
 	public void jsonReceived(String json) {
 		try {
 			XBMCMessage message = objectMapper.readValue(json, XBMCMessage.class);
-			XBMCEventType event = XBMCEventType.getByMethodName(message.getMethod());
-			switch (event) {
-			case ON_PAUSE:
-			case ON_PLAY:
-			case ON_STOP:
-				handlePlayPauseStop(event, message.getParams());
-				break;
+
+			for (XBMCClientListener listener : listeners) {
+				listener.messageReceived(message);
 			}
 		} catch (JsonParseException e) {
 			logger.error("Can't parse received json message: " + json, e);
@@ -112,36 +103,6 @@ public class XBMCClient implements XBMCSocketListener {
 		} catch (IOException e) {
 			logger.error("Can't parse received json message: " + json, e);
 		}
-	}
-
-	private void handlePlayPauseStop(XBMCEventType eventType, XBMCParams params) {
-		PlayPauseStopData data = (PlayPauseStopData) parseData(params, eventType.getDataClass(), eventType);
-		for (XBMCPlayListener listener : playListeners) {
-			switch (eventType) {
-			case ON_PAUSE:
-				listener.onPause(eventType, data);
-				break;
-			case ON_PLAY:
-				listener.onPlay(eventType, data);
-			case ON_STOP:
-				listener.onStop(eventType, data);
-			}
-		}
-	}
-
-	private <D extends XBMCData> D parseData(XBMCParams params, Class<D> clazz, XBMCEventType eventType) {
-		String jsonString = params.getData().toString();
-		try {
-			D data = objectMapper.readValue(jsonString, clazz);
-			return data;
-		} catch (JsonParseException e) {
-			logger.error("Can't parse Data: " + jsonString, e);
-		} catch (JsonMappingException e) {
-			logger.error("Can't parse Data: " + jsonString, e);
-		} catch (IOException e) {
-			logger.error("Can't parse Data: " + jsonString, e);
-		}
-		return null;
 	}
 
 	@Override

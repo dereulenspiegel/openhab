@@ -28,6 +28,9 @@
  */
 package org.openhab.binding.xbmc.internal;
 
+import org.openhab.binding.xbmc.internal.client.messages.data.PlayPauseStopData;
+import org.openhab.binding.xbmc.internal.client.messages.parser.BasicDataParser;
+import org.openhab.binding.xbmc.internal.client.messages.parser.DataParserFactory;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
@@ -50,6 +53,7 @@ public final class XBMCActivator implements BundleActivator {
 	 */
 	public void start(BundleContext bc) throws Exception {
 		context = bc;
+		registerDataParsers();
 		logger.debug("XBMC binding has been started.");
 	}
 
@@ -68,6 +72,15 @@ public final class XBMCActivator implements BundleActivator {
 	 */
 	public static BundleContext getContext() {
 		return context;
+	}
+
+	private void registerDataParsers() {
+		DataParserFactory.registerParser("Player.OnPause", new BasicDataParser<PlayPauseStopData>(
+				PlayPauseStopData.class));
+		DataParserFactory.registerParser("Player.OnPlay", new BasicDataParser<PlayPauseStopData>(
+				PlayPauseStopData.class));
+		DataParserFactory.registerParser("Player.OnStop", new BasicDataParser<PlayPauseStopData>(
+				PlayPauseStopData.class));
 	}
 
 }
