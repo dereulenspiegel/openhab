@@ -7,6 +7,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import de.akuz.cul.CULCommunicationException;
 import de.akuz.cul.CULDeviceException;
 import de.akuz.cul.CULHandler;
@@ -22,7 +25,17 @@ import de.akuz.cul.CULMode;
  */
 public abstract class AbstractCULHandler implements CULHandler, CULHandlerInternal {
 
+	/**
+	 * Thread which sends all queued commands to the CUL.
+	 * 
+	 * @author Till Klocke
+	 * @since 1.4.0
+	 * 
+	 */
 	private class SendThread extends Thread {
+
+		private final Logger logger = LoggerFactory.getLogger(SendThread.class);
+
 		@Override
 		public void run() {
 			while (!isInterrupted()) {
@@ -34,14 +47,26 @@ public abstract class AbstractCULHandler implements CULHandler, CULHandlerIntern
 					try {
 						writeMessage(command);
 					} catch (CULCommunicationException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						logger.error("Error while writing command to CUL", e);
 					}
+				}
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					logger.debug("Error while sleeping in SendThread", e);
 				}
 			}
 		}
 	}
 
+	/**
+	 * Wrapper class wraps a CULListener and a received Strings and gets
+	 * executed by a executor in its own thread.
+	 * 
+	 * @author Till Klocke
+	 * @since 1.4.0
+	 * 
+	 */
 	private static class NotifyDataReceivedRunner implements Runnable {
 
 		private String message;
@@ -59,6 +84,10 @@ public abstract class AbstractCULHandler implements CULHandler, CULHandlerIntern
 
 	}
 
+	/**
+	 * Executor to handle received messages. Every listern should be called in
+	 * its own thread.
+	 */
 	protected Executor receiveExecutor = Executors.newCachedThreadPool();
 	protected SendThread sendThread = new SendThread();
 
@@ -110,8 +139,16 @@ public abstract class AbstractCULHandler implements CULHandler, CULHandlerIntern
 		closeHardware();
 	}
 
-	protected abstract void openHardware()  throws CULDeviceException;
+	/**
+	 * initialize the CUL hardware and open the connection
+	 * 
+	 * @throws CULDeviceException
+	 */
+	protected abstract void openHardware() throws CULDeviceException;
 
+	/**
+	 * Close the connection to the hardware and clean up all resources.
+	 */
 	protected abstract void closeHardware();
 
 	@Override
@@ -126,6 +163,12 @@ public abstract class AbstractCULHandler implements CULHandler, CULHandlerIntern
 		sendQueue.add(message);
 	}
 
+	/**
+	 * Write a message to the CUL.
+	 * 
+	 * @param message
+	 * @throws CULCommunicationException
+	 */
 	protected abstract void writeMessage(String message) throws CULCommunicationException;
 
 	/**
@@ -145,6 +188,11 @@ public abstract class AbstractCULHandler implements CULHandler, CULHandlerIntern
 		return true;
 	}
 
+	/**
+	 * Notifies each CULListener about the received data in its own thread.
+	 * 
+	 * @param data
+	 */
 	protected void notifyDataReceived(String data) {
 		for (final CULListener listener : listeners) {
 			receiveExecutor.execute(new NotifyDataReceivedRunner(listener, data));
