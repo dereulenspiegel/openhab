@@ -2,7 +2,13 @@ package de.akuz.cul.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
+import de.akuz.cul.CULCommunicationException;
+import de.akuz.cul.CULDeviceException;
 import de.akuz.cul.CULHandler;
 import de.akuz.cul.CULListener;
 import de.akuz.cul.CULMode;
@@ -16,10 +22,52 @@ import de.akuz.cul.CULMode;
  */
 public abstract class AbstractCULHandler implements CULHandler, CULHandlerInternal {
 
+	private class SendThread extends Thread {
+		@Override
+		public void run() {
+			while (!isInterrupted()) {
+				String command = sendQueue.poll();
+				if (command != null) {
+					if (!command.endsWith("\r\n")) {
+						command = command + "\r\n";
+					}
+					try {
+						writeMessage(command);
+					} catch (CULCommunicationException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+	}
+
+	private static class NotifyDataReceivedRunner implements Runnable {
+
+		private String message;
+		private CULListener listener;
+
+		public NotifyDataReceivedRunner(CULListener listener, String message) {
+			this.message = message;
+			this.listener = listener;
+		}
+
+		@Override
+		public void run() {
+			listener.dataReceived(message);
+		}
+
+	}
+
+	protected Executor receiveExecutor = Executors.newCachedThreadPool();
+	protected SendThread sendThread = new SendThread();
+
 	protected String deviceName;
 	protected CULMode mode;
 
 	protected List<CULListener> listeners = new ArrayList<CULListener>();
+
+	protected Queue<String> sendQueue = new ConcurrentLinkedQueue<String>();
 
 	protected AbstractCULHandler(String deviceName, CULMode mode) {
 		this.mode = mode;
@@ -50,6 +98,36 @@ public abstract class AbstractCULHandler implements CULHandler, CULHandlerIntern
 		return listeners.size() > 0;
 	}
 
+	@Override
+	public void open() throws CULDeviceException {
+		openHardware();
+		sendThread.start();
+	}
+
+	@Override
+	public void close() {
+		sendThread.interrupt();
+		closeHardware();
+	}
+
+	protected abstract void openHardware()  throws CULDeviceException;
+
+	protected abstract void closeHardware();
+
+	@Override
+	public void send(String command) {
+		if (isMessageAllowed(command)) {
+			sendQueue.add(command);
+		}
+	}
+
+	@Override
+	public void sendWithoutCheck(String message) throws CULCommunicationException {
+		sendQueue.add(message);
+	}
+
+	protected abstract void writeMessage(String message) throws CULCommunicationException;
+
 	/**
 	 * Checks if the message would alter the RF mode of this device.
 	 * 
@@ -68,8 +146,8 @@ public abstract class AbstractCULHandler implements CULHandler, CULHandlerIntern
 	}
 
 	protected void notifyDataReceived(String data) {
-		for (CULListener listener : listeners) {
-			listener.dataReceived(data);
+		for (final CULListener listener : listeners) {
+			receiveExecutor.execute(new NotifyDataReceivedRunner(listener, data));
 		}
 	}
 
