@@ -8,6 +8,7 @@ import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xbmc.android.jsonrpc.io.ConnectionListener;
+import org.xbmc.android.jsonrpc.io.JavaConnectionManager;
 import org.xbmc.android.jsonrpc.notification.AbstractEvent;
 
 public class XBMCConnectionListener implements ConnectionListener {
@@ -19,10 +20,14 @@ public class XBMCConnectionListener implements ConnectionListener {
 
 	private String deviceId;
 
-	public XBMCConnectionListener(String deviceId, EventPublisher publisher, XBMCBindingProvider provider) {
+	private JavaConnectionManager conManager;
+
+	public XBMCConnectionListener(String deviceId, EventPublisher publisher, XBMCBindingProvider provider,
+			JavaConnectionManager conManager) {
 		this.deviceId = deviceId;
 		this.eventPublisher = publisher;
 		this.bindingProvider = provider;
+		this.conManager = conManager;
 	}
 
 	@Override
@@ -34,8 +39,8 @@ public class XBMCConnectionListener implements ConnectionListener {
 
 	@Override
 	public void disconnected() {
-		// TODO Auto-generated method stub
-		logger.debug(deviceId + ": Disconnected");
+		logger.debug(deviceId + ": Disconnected, Trying to reconnect");
+		conManager.reconnect();
 	}
 
 	@Override

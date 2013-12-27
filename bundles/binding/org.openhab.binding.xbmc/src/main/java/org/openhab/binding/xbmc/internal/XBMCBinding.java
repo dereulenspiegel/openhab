@@ -228,7 +228,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 					// FIXME probably give the listener a list of
 					// BindingProvider instead of just the first one
 					conManager.registerConnectionListener(new XBMCConnectionListener(clientEntry.getKey(),
-							eventPublisher, providers.iterator().next()));
+							eventPublisher, providers.iterator().next(), conManager));
 					conManager.connect(clientEntry.getValue());
 					clientMap.put(clientEntry.getKey(), conManager);
 				} catch (Exception e) {
