@@ -32,4 +32,5 @@ Export-Package: org.openhab.binding.xbmc
 Bundle-DocURL: http://www.openhab.org
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Service-Component: OSGI-INF/binding.xml, OSGI-INF/genericbindingprovider.xml
-Bundle-ClassPath: .
+Bundle-ClassPath: .,
+ libs/xbmc-api-0.0.1-SNAPSHOT-jar-with-dependencies.jar

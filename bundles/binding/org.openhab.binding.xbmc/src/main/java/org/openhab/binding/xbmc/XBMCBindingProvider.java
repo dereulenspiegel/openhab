@@ -28,12 +28,19 @@
  */
 package org.openhab.binding.xbmc;
 
+import java.util.List;
+
+import org.openhab.binding.xbmc.internal.XBMCBindingConfig;
 import org.openhab.core.binding.BindingProvider;
 
 /**
  * @author Till Klocke
- * @since 1.3.0
+ * @since 1.4.0
  */
 public interface XBMCBindingProvider extends BindingProvider {
+
+	public List<XBMCBindingConfig> findBindingConfigs(String deviceId, String methodName);
+
+	public XBMCBindingConfig findBindingConfigByItemName(String itemName);
 
 }

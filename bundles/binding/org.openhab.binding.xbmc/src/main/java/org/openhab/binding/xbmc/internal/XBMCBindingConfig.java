@@ -1,17 +1,20 @@
 package org.openhab.binding.xbmc.internal;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
 import org.openhab.core.types.Command;
-
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
+import org.openhab.core.types.State;
+import org.xbmc.android.jsonrpc.api.AbstractCall;
 
 public class XBMCBindingConfig implements BindingConfig {
 
 	private String deviceId;
 	private Item item;
-	private Multimap<Command, BindingTypes> commandMap = HashMultimap.create();
+	private Map<Command, String> commandMap = new HashMap<Command, String>();
+	private Map<String, State> eventMap = new HashMap<String, State>();
 
 	public Item getItem() {
 		return item;
@@ -21,24 +24,38 @@ public class XBMCBindingConfig implements BindingConfig {
 		this.item = item;
 	}
 
-	public Multimap<Command, BindingTypes> getCommandMap() {
-		return commandMap;
-	}
-
-	public void setCommandMap(Multimap<Command, BindingTypes> commandMap) {
-		this.commandMap = commandMap;
-	}
-
-	public void addCommandMapping(Command command, BindingTypes type) {
-		commandMap.put(command, type);
-	}
-
 	public String getDeviceId() {
 		return deviceId;
 	}
 
 	public void setDeviceId(String deviceId) {
 		this.deviceId = deviceId;
+	}
+
+	public void addCommandAndCall(Command command, String methodName) {
+		commandMap.put(command, methodName);
+	}
+
+	public void addStateAndEvent(State state, String event) {
+		eventMap.put(event, state);
+	}
+
+	public State getStateForEvent(String event) {
+		return eventMap.get(event);
+	}
+
+	public String getMethodNameForCommand(Command command) {
+		return commandMap.get(command);
+	}
+
+	public boolean hasMethodName(String methodName) {
+		if (commandMap.containsValue(methodName)) {
+			return true;
+		}
+		if (eventMap.containsKey(methodName)) {
+			return true;
+		}
+		return false;
 	}
 
 }

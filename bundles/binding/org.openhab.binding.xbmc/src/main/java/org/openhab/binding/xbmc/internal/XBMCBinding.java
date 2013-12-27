@@ -40,9 +40,6 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
-import org.openhab.binding.xbmc.internal.client.XBMCClient;
-import org.openhab.binding.xbmc.internal.client.messages.data.PlayPauseStopData;
-import org.openhab.binding.xbmc.internal.tcp.XBMCSocketException;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -50,16 +47,20 @@ import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xbmc.android.jsonrpc.api.AbstractCall;
+import org.xbmc.android.jsonrpc.config.HostConfig;
+import org.xbmc.android.jsonrpc.io.ApiCallback;
+import org.xbmc.android.jsonrpc.io.JavaConnectionManager;
 
 /**
  * @author Till Klocke
- * @since 1.3.0
+ * @since 1.4.0
  */
 public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> implements ManagedService {
 
 	private static final Logger logger = LoggerFactory.getLogger(XBMCBinding.class);
 
-	private Map<String, XBMCClient> clientMap = new HashMap<String, XBMCClient>();
+	private Map<String, JavaConnectionManager> clientMap = new HashMap<String, JavaConnectionManager>();
 
 	private static final Pattern EXTRACT_CONFIG_PATTERN = Pattern.compile("^(.*?)\\.(host|port)$");
 
@@ -76,8 +77,8 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	}
 
 	public void deactivate() {
-		for (XBMCClient client : clientMap.values()) {
-			client.close();
+		for (JavaConnectionManager client : clientMap.values()) {
+			client.disconnect();
 		}
 	}
 
@@ -109,12 +110,37 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	/**
 	 * @{inheritDoc
 	 */
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	protected void internalReceiveCommand(String itemName, Command command) {
 		// the code being executed when a command was sent on the openHAB
 		// event bus goes here. This method is only called if one of the
 		// BindingProviders provide a binding for the given 'itemName'.
 		logger.debug("internalReceiveCommand() is called!");
+		XBMCBindingConfig config = findConfigByItemName(itemName);
+		if (config != null) {
+			String methodName = config.getMethodNameForCommand(command);
+			AbstractCall call = CallAndEventParser.getCallFromString(methodName);
+			JavaConnectionManager conManager = clientMap.get(config.getDeviceId());
+			if (conManager != null && call != null) {
+				conManager.call(call, new ApiCallback() {
+
+					@Override
+					public void onError(int arg0, String arg1, String arg2) {
+						// TODO Auto-generated method stub
+
+					}
+
+					@Override
+					public void onResponse(AbstractCall arg0) {
+						// TODO Auto-generated method stub
+
+					}
+				});
+			} else {
+				logger.error("Either ApiCall for command could not be found or device connection can't be found");
+			}
+		}
 	}
 
 	/**
@@ -126,6 +152,16 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 		// event bus goes here. This method is only called if one of the
 		// BindingProviders provide a binding for the given 'itemName'.
 		logger.debug("internalReceiveCommand() is called!");
+	}
+
+	private XBMCBindingConfig findConfigByItemName(String itemName) {
+		for (XBMCBindingProvider provider : providers) {
+			XBMCBindingConfig config = provider.findBindingConfigByItemName(itemName);
+			if (config != null) {
+				return config;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -143,6 +179,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 				refreshInterval = Long.parseLong(refreshIntervalString);
 			}
 			Enumeration<String> keys = config.keys();
+			Map<String, HostConfig> hostConfigs = new HashMap<String, HostConfig>();
 
 			while (keys.hasMoreElements()) {
 				String key = (String) keys.nextElement();
@@ -166,40 +203,40 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 
 				String deviceId = matcher.group(1);
 
-				XBMCClient client = clientMap.get(deviceId);
-				if (client == null) {
-					client = new XBMCClient();
-					clientMap.put(deviceId, client);
+				HostConfig hostConfig = hostConfigs.get(deviceId);
+				if (hostConfig == null) {
+					hostConfig = new HostConfig(null);
+					hostConfigs.put(deviceId, hostConfig);
 				}
 
 				String configKey = matcher.group(2);
 				String value = (String) config.get(key);
 
 				if ("host".equals(configKey)) {
-					client.setHost(value);
+					hostConfig.mAddress = value;
 				} else if ("port".equals(configKey)) {
 					int port = Integer.valueOf(value);
-					client.setPort(port);
+					hostConfig.mTcpPort = port;
 				} else {
 					throw new ConfigurationException(configKey, "the given configKey '" + configKey + "' is unknown");
 				}
 			}
 			List<String> failedClientKeys = new ArrayList<String>();
-			for (Entry<String, XBMCClient> clientEntry : clientMap.entrySet()) {
+			for (Entry<String, HostConfig> clientEntry : hostConfigs.entrySet()) {
 				try {
-					clientEntry.getValue().open();
-				} catch (XBMCSocketException e) {
+					JavaConnectionManager conManager = new JavaConnectionManager();
+					// FIXME probably give the listener a list of
+					// BindingProvider instead of just the first one
+					conManager.registerConnectionListener(new XBMCConnectionListener(clientEntry.getKey(),
+							eventPublisher, providers.iterator().next()));
+					conManager.connect(clientEntry.getValue());
+					clientMap.put(clientEntry.getKey(), conManager);
+				} catch (Exception e) {
 					failedClientKeys.add(clientEntry.getKey());
 					logger.error("Can't connect with XBMC instance " + clientEntry.getKey(), e);
 				}
 			}
-			for (String s : failedClientKeys) {
-				XBMCClient client = clientMap.get(s);
-				client.close();
-				clientMap.remove(s);
-			}
 			setProperlyConfigured(true);
 		}
 	}
-
 }
