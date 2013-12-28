@@ -115,6 +115,7 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 		String commandsAndStates = matcher.group(2);
 		Map<String, String> configMap = createStringMap(commandsAndStates);
 		config.setDeviceId(deviceId);
+		config.setItem(item);
 		for (Entry<String, String> entry : configMap.entrySet()) {
 			Command command = TypeParser.parseCommand(allowedCommands, entry.getKey());
 			State state = TypeParser.parseState(allowedStates, entry.getKey());

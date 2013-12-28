@@ -38,19 +38,34 @@ public class XBMCConnectionListener implements ConnectionListener {
 	}
 
 	@Override
-	public void disconnected() {
+	public void disconnected(Exception error) {
 		logger.debug(deviceId + ": Disconnected, Trying to reconnect");
+		if (error != null) {
+			logger.debug(deviceId + ": Disconnected due to to Exception", error);
+		}
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			logger.debug("Exception while waiting for reconnect", e);
+		}
 		conManager.reconnect();
 	}
 
 	@Override
 	public void notificationReceived(AbstractEvent event) {
 		String methodName = event.getMethod();
+		logger.debug("Received event: " + methodName);
 		List<XBMCBindingConfig> configs = bindingProvider.findBindingConfigs(deviceId, methodName);
 		for (XBMCBindingConfig config : configs) {
 			State state = config.getStateForEvent(methodName);
 			if (state != null) {
-				eventPublisher.postUpdate(config.getItem().getName(), state);
+				if (eventPublisher != null) {
+					logger.debug(deviceId + ": Posting update for item " + config.getItem().getName() + ": "
+							+ state.format("%s"));
+					eventPublisher.postUpdate(config.getItem().getName(), state);
+				} else {
+					logger.error("EventPublisher was NULL during creation of this listener...");
+				}
 			}
 		}
 	}

@@ -119,6 +119,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 		logger.debug("internalReceiveCommand() is called!");
 		XBMCBindingConfig config = findConfigByItemName(itemName);
 		if (config != null) {
+			logger.debug("Found config for item " + itemName);
 			String methodName = config.getMethodNameForCommand(command);
 			AbstractCall call = CallAndEventParser.getCallFromString(methodName);
 			JavaConnectionManager conManager = clientMap.get(config.getDeviceId());
@@ -151,7 +152,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 		// the code being executed when a state was sent on the openHAB
 		// event bus goes here. This method is only called if one of the
 		// BindingProviders provide a binding for the given 'itemName'.
-		logger.debug("internalReceiveCommand() is called!");
+		logger.debug("internalReceiveUpdate() is called!");
 	}
 
 	private XBMCBindingConfig findConfigByItemName(String itemName) {
@@ -169,11 +170,15 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	 */
 	@Override
 	public void updated(Dictionary<String, ?> config) throws ConfigurationException {
+		if (eventPublisher == null) {
+			logger.error("EventPublisher is null when getting updated config");
+		}
 		if (config != null) {
 
 			// to override the default refresh interval one has to add a
 			// parameter to openhab.cfg like
 			// <bindingName>:refresh=<intervalInMs>
+			logger.debug("Updating config");
 			String refreshIntervalString = (String) config.get("refresh");
 			if (StringUtils.isNotBlank(refreshIntervalString)) {
 				refreshInterval = Long.parseLong(refreshIntervalString);
@@ -221,9 +226,13 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 					throw new ConfigurationException(configKey, "the given configKey '" + configKey + "' is unknown");
 				}
 			}
+			if (hostConfigs.isEmpty()) {
+				logger.warn("Found no valid configurations for XBMC hosts");
+			}
 			List<String> failedClientKeys = new ArrayList<String>();
 			for (Entry<String, HostConfig> clientEntry : hostConfigs.entrySet()) {
 				try {
+					logger.debug("Connecting to XBMC " + clientEntry.getKey());
 					JavaConnectionManager conManager = new JavaConnectionManager();
 					// FIXME probably give the listener a list of
 					// BindingProvider instead of just the first one
