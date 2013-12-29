@@ -39,6 +39,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
+import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.types.Command;
@@ -60,7 +61,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 
 	private static final Logger logger = LoggerFactory.getLogger(XBMCBinding.class);
 
-	private Map<String, JavaConnectionManager> clientMap = new HashMap<String, JavaConnectionManager>();
+	private Map<String, XBMCConnectionListener> clientMap = new HashMap<String, XBMCConnectionListener>();
 
 	private static final Pattern EXTRACT_CONFIG_PATTERN = Pattern.compile("^(.*?)\\.(host|port)$");
 
@@ -77,8 +78,8 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	}
 
 	public void deactivate() {
-		for (JavaConnectionManager client : clientMap.values()) {
-			client.disconnect();
+		for (XBMCConnectionListener listener : clientMap.values()) {
+			listener.getConnectionManager().disconnect();
 		}
 	}
 
@@ -103,8 +104,10 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	 */
 	@Override
 	protected void execute() {
-		// the frequently executed code (polling) goes here ...
-		logger.debug("execute() method is called!");
+		logger.debug("Updating properties of all instances");
+		for (XBMCConnectionListener listener : clientMap.values()) {
+			listener.updateProperties();
+		}
 	}
 
 	/**
@@ -113,22 +116,21 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	protected void internalReceiveCommand(String itemName, Command command) {
-		// the code being executed when a command was sent on the openHAB
-		// event bus goes here. This method is only called if one of the
-		// BindingProviders provide a binding for the given 'itemName'.
 		logger.debug("internalReceiveCommand() is called!");
 		XBMCBindingConfig config = findConfigByItemName(itemName);
 		if (config != null) {
 			logger.debug("Found config for item " + itemName);
-			String methodName = config.getMethodNameForCommand(command);
-			AbstractCall call = CallAndEventParser.getCallFromString(methodName);
-			JavaConnectionManager conManager = clientMap.get(config.getDeviceId());
+			XBMCBindingCommands bindingCommand = config.getMethodNameForCommand(command);
+			AbstractCall call = CallAndEventParser.getCallForBindingCommandAndCommand(bindingCommand, command);
+			logger.debug("Executing call " + call.getClass().getSimpleName() + " for command " + command.format("%s"));
+			JavaConnectionManager conManager = clientMap.get(config.getDeviceId()).getConnectionManager();
 			if (conManager != null && call != null) {
 				conManager.call(call, new ApiCallback() {
 
 					@Override
 					public void onError(int arg0, String arg1, String arg2) {
 						// TODO Auto-generated method stub
+						logger.error("Received error from XBMC");
 
 					}
 
@@ -236,10 +238,11 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 					JavaConnectionManager conManager = new JavaConnectionManager();
 					// FIXME probably give the listener a list of
 					// BindingProvider instead of just the first one
-					conManager.registerConnectionListener(new XBMCConnectionListener(clientEntry.getKey(),
-							eventPublisher, providers.iterator().next(), conManager));
+					XBMCConnectionListener listener = new XBMCConnectionListener(clientEntry.getKey(), eventPublisher,
+							providers.iterator().next(), conManager);
+					conManager.registerConnectionListener(listener);
 					conManager.connect(clientEntry.getValue());
-					clientMap.put(clientEntry.getKey(), conManager);
+					clientMap.put(clientEntry.getKey(), listener);
 				} catch (Exception e) {
 					failedClientKeys.add(clientEntry.getKey());
 					logger.error("Can't connect with XBMC instance " + clientEntry.getKey(), e);

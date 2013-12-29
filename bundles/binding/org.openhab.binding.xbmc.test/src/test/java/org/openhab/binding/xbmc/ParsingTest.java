@@ -5,6 +5,10 @@ import java.util.regex.Pattern;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.openhab.binding.xbmc.internal.XBMCBindingConfig;
+import org.openhab.binding.xbmc.internal.XBMCGenericBindingProvider;
+import org.openhab.core.library.items.SwitchItem;
+import org.openhab.core.library.types.OnOffType;
 
 public class ParsingTest {
 
@@ -23,6 +27,16 @@ public class ParsingTest {
 		Assert.assertEquals("mediacenter", matcher.group(1));
 		Assert.assertEquals("ON:Player.OnPlay,OFF:Player.OnPause", matcher.group(2));
 
+	}
+
+	@Test
+	public void testParseBindingConfig() throws Exception {
+		XBMCGenericBindingProvider provider = new XBMCGenericBindingProvider();
+		String config1 = "mediacenter(ON:PLAY,OFF:PAUSE)";
+		provider.processBindingConfiguration("xbmc", new SwitchItem("testSwitch"), config1);
+		XBMCBindingConfig bindingConfig = provider.findBindingConfigByItemName("testSwitch");
+		Assert.assertNotNull(bindingConfig);
+		Assert.assertEquals(XBMCBindingCommands.PLAY, bindingConfig.getMethodNameForCommand(OnOffType.ON));
 	}
 
 }

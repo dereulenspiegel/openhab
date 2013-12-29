@@ -37,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.core.items.Item;
 import org.openhab.core.library.items.SwitchItem;
@@ -95,7 +96,7 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 	}
 
 	/**
-	 * xbmc="[deviceId]([COMMAND/STATE]:[Method])"; {@inheritDoc}
+	 * xbmc="[deviceId]([COMMAND/STATE]:[BindingCommand])"; {@inheritDoc}
 	 */
 	@Override
 	public void processBindingConfiguration(String context, Item item, String bindingConfig)
@@ -117,15 +118,16 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 		config.setDeviceId(deviceId);
 		config.setItem(item);
 		for (Entry<String, String> entry : configMap.entrySet()) {
+			XBMCBindingCommands bindingCommand = XBMCBindingCommands.valueOf(entry.getValue());
 			Command command = TypeParser.parseCommand(allowedCommands, entry.getKey());
 			State state = TypeParser.parseState(allowedStates, entry.getKey());
 
 			if (command != null) {
 				// TODO Parse Call from MethodName
-				config.addCommandAndCall(command, null);
+				config.addCommandAndCall(command, bindingCommand);
 			}
 			if (state != null) {
-				config.addStateAndEvent(state, entry.getValue());
+				config.addStateAndEvent(state, bindingCommand);
 			}
 		}
 		bindingConfigs.put(deviceId, config);
@@ -151,9 +153,13 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 	@Override
 	public List<XBMCBindingConfig> findBindingConfigs(String deviceId, String methodName) {
 		Collection<XBMCBindingConfig> configsForDevice = bindingConfigs.get(deviceId);
+		XBMCBindingCommands bindingCommand = XBMCBindingCommands.getBindingCommandByMethodName(methodName);
 		List<XBMCBindingConfig> resultConfigs = new ArrayList<XBMCBindingConfig>();
+		if (bindingCommand == null) {
+			return resultConfigs;
+		}
 		for (XBMCBindingConfig config : configsForDevice) {
-			if (config.hasMethodName(methodName)) {
+			if (config.hasBindingCommand(bindingCommand)) {
 				resultConfigs.add(config);
 			}
 		}

@@ -3,18 +3,18 @@ package org.openhab.binding.xbmc.internal;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
-import org.xbmc.android.jsonrpc.api.AbstractCall;
 
 public class XBMCBindingConfig implements BindingConfig {
 
 	private String deviceId;
 	private Item item;
-	private Map<Command, String> commandMap = new HashMap<Command, String>();
-	private Map<String, State> eventMap = new HashMap<String, State>();
+	private Map<Command, XBMCBindingCommands> commandMap = new HashMap<Command, XBMCBindingCommands>();
+	private Map<XBMCBindingCommands, State> eventMap = new HashMap<XBMCBindingCommands, State>();
 
 	public Item getItem() {
 		return item;
@@ -32,27 +32,27 @@ public class XBMCBindingConfig implements BindingConfig {
 		this.deviceId = deviceId;
 	}
 
-	public void addCommandAndCall(Command command, String methodName) {
-		commandMap.put(command, methodName);
+	public void addCommandAndCall(Command command, XBMCBindingCommands bindingCommand) {
+		commandMap.put(command, bindingCommand);
 	}
 
-	public void addStateAndEvent(State state, String event) {
-		eventMap.put(event, state);
+	public void addStateAndEvent(State state, XBMCBindingCommands bindingCommand) {
+		eventMap.put(bindingCommand, state);
 	}
 
 	public State getStateForEvent(String event) {
 		return eventMap.get(event);
 	}
 
-	public String getMethodNameForCommand(Command command) {
+	public XBMCBindingCommands getMethodNameForCommand(Command command) {
 		return commandMap.get(command);
 	}
 
-	public boolean hasMethodName(String methodName) {
-		if (commandMap.containsValue(methodName)) {
+	public boolean hasBindingCommand(XBMCBindingCommands command) {
+		if (commandMap.containsValue(command)) {
 			return true;
 		}
-		if (eventMap.containsKey(methodName)) {
+		if (eventMap.containsKey(command)) {
 			return true;
 		}
 		return false;
