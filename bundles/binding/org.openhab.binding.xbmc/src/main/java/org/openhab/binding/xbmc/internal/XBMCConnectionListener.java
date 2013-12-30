@@ -5,6 +5,9 @@ import java.util.List;
 import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.core.events.EventPublisher;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,8 +67,19 @@ public class XBMCConnectionListener implements ConnectionListener {
 				name = result.getResult().name;
 				version = result.getResult().version;
 
+				updateItemsRepresentingProperties();
+
 			}
 		});
+	}
+
+	private void updateItemsRepresentingProperties() {
+		updateItemsForCommand(XBMCBindingCommands.VOLUME, currentVolume);
+		if (isMute != null && isMute == Boolean.TRUE) {
+			updateItemsForCommand(XBMCBindingCommands.MUTE);
+		} else {
+			updateItemsForCommand(XBMCBindingCommands.UNMUTE);
+		}
 	}
 
 	@Override
@@ -91,7 +105,7 @@ public class XBMCConnectionListener implements ConnectionListener {
 	public void notificationReceived(AbstractEvent event) {
 		String methodName = event.getMethod();
 		logger.debug("Received event: " + methodName);
-		
+
 		// Special case, we wan't to be able to distinguish between shows
 		// and movies
 		if (event instanceof PlayerEvent.Play) {
@@ -102,7 +116,7 @@ public class XBMCConnectionListener implements ConnectionListener {
 				updateItemsForCommand(XBMCBindingCommands.PLAYING_MOVIE);
 			}
 		}
-		
+
 		XBMCBindingCommands bindingCommand = XBMCBindingCommands.getBindingCommandByMethodName(methodName);
 		if (bindingCommand != null) {
 			updateItemsForCommand(bindingCommand);
@@ -112,9 +126,13 @@ public class XBMCConnectionListener implements ConnectionListener {
 	}
 
 	private void updateItemsForCommand(XBMCBindingCommands bindingCommand) {
+		updateItemsForCommand(bindingCommand, null);
+	}
+
+	private void updateItemsForCommand(XBMCBindingCommands bindingCommand, Object argument) {
 		List<XBMCBindingConfig> configs = bindingProvider.findBindingConfigs(deviceId, bindingCommand);
 		for (XBMCBindingConfig config : configs) {
-			State state = config.getStateForEvent(bindingCommand);
+			State state = getState(config, bindingCommand, null);
 			if (state != null) {
 				if (eventPublisher != null) {
 					logger.debug(deviceId + ": Posting update for item " + config.getItem().getName() + ": "
@@ -125,6 +143,20 @@ public class XBMCConnectionListener implements ConnectionListener {
 				}
 			}
 		}
+	}
+
+	private State getState(XBMCBindingConfig config, XBMCBindingCommands bindingCommand, Object argument) {
+		if (argument != null) {
+			if (argument instanceof Integer) {
+				return new DecimalType(((Integer) argument).longValue());
+			} else if (argument instanceof String) {
+				return new StringType(argument.toString());
+			} else if (argument instanceof Boolean) {
+				Boolean bool = (Boolean) argument;
+				return bool.booleanValue() ? OnOffType.ON : OnOffType.OFF;
+			}
+		}
+		return config.getStateForEvent(bindingCommand);
 	}
 
 }

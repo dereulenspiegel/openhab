@@ -11,6 +11,15 @@ import org.slf4j.LoggerFactory;
 import org.xbmc.android.jsonrpc.api.AbstractCall;
 import org.xbmc.android.jsonrpc.api.model.GlobalModel.Toggle;
 
+/**
+ * This class is responsible for creating Calls which can be send to XBMC. Calls
+ * are created based on a given binding command and a received openhab command.
+ * The openhab command can be used as a parameter for the XBMC call.
+ * 
+ * @author Till Klocke
+ * @since 1.4.0
+ * 
+ */
 public class CallAndEventParser {
 
 	private final static Logger logger = LoggerFactory.getLogger(CallAndEventParser.class);
@@ -39,7 +48,7 @@ public class CallAndEventParser {
 		case UNMUTE:
 			call = instantiateInstance(clazz, new Toggle(Boolean.FALSE));
 			break;
-		case SETVOLUME:
+		case VOLUME:
 			Integer volume = extractIntegerValueFromCommand(command);
 			call = instantiateInstance(clazz, volume);
 			break;
@@ -50,6 +59,13 @@ public class CallAndEventParser {
 		return call;
 	}
 
+	/**
+	 * Since all numeric parameter in XBMC calls are Integer we try to get the
+	 * integer value of the received command.
+	 * 
+	 * @param command
+	 * @return
+	 */
 	private static Integer extractIntegerValueFromCommand(Command command) {
 		Integer result = null;
 		if (command instanceof DecimalType) {
