@@ -152,18 +152,11 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 
 	@Override
 	public List<XBMCBindingConfig> findBindingConfigs(String deviceId, String methodName) {
-		Collection<XBMCBindingConfig> configsForDevice = bindingConfigs.get(deviceId);
 		XBMCBindingCommands bindingCommand = XBMCBindingCommands.getBindingCommandByMethodName(methodName);
-		List<XBMCBindingConfig> resultConfigs = new ArrayList<XBMCBindingConfig>();
-		if (bindingCommand == null) {
-			return resultConfigs;
+		if (bindingCommand != null) {
+			return findBindingConfigs(deviceId, bindingCommand);
 		}
-		for (XBMCBindingConfig config : configsForDevice) {
-			if (config.hasBindingCommand(bindingCommand)) {
-				resultConfigs.add(config);
-			}
-		}
-		return resultConfigs;
+		return new ArrayList<XBMCBindingConfig>(0);
 	}
 
 	@Override
@@ -174,6 +167,21 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 			}
 		}
 		return null;
+	}
+
+	@Override
+	public List<XBMCBindingConfig> findBindingConfigs(String deviceId, XBMCBindingCommands bindingCommand) {
+		Collection<XBMCBindingConfig> configsForDevice = bindingConfigs.get(deviceId);
+		List<XBMCBindingConfig> resultConfigs = new ArrayList<XBMCBindingConfig>();
+		if (bindingCommand == null) {
+			return resultConfigs;
+		}
+		for (XBMCBindingConfig config : configsForDevice) {
+			if (config.hasBindingCommand(bindingCommand)) {
+				resultConfigs.add(config);
+			}
+		}
+		return resultConfigs;
 	}
 
 }

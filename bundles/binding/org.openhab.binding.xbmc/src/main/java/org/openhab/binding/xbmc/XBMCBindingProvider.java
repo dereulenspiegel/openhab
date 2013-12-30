@@ -40,6 +40,8 @@ import org.openhab.core.binding.BindingProvider;
 public interface XBMCBindingProvider extends BindingProvider {
 
 	public List<XBMCBindingConfig> findBindingConfigs(String deviceId, String methodName);
+	
+	public List<XBMCBindingConfig> findBindingConfigs(String devuceId, XBMCBindingCommands bindingCommand);
 
 	public XBMCBindingConfig findBindingConfigByItemName(String itemName);
 

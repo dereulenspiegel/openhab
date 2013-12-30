@@ -16,6 +16,8 @@ import org.xbmc.android.jsonrpc.io.ApiCallback;
 import org.xbmc.android.jsonrpc.io.ConnectionListener;
 import org.xbmc.android.jsonrpc.io.JavaConnectionManager;
 import org.xbmc.android.jsonrpc.notification.AbstractEvent;
+import org.xbmc.android.jsonrpc.notification.PlayerEvent;
+import org.xbmc.android.jsonrpc.notification.PlayerEvent.Play;
 
 public class XBMCConnectionListener implements ConnectionListener {
 
@@ -89,9 +91,30 @@ public class XBMCConnectionListener implements ConnectionListener {
 	public void notificationReceived(AbstractEvent event) {
 		String methodName = event.getMethod();
 		logger.debug("Received event: " + methodName);
-		List<XBMCBindingConfig> configs = bindingProvider.findBindingConfigs(deviceId, methodName);
+		
+		// Special case, we wan't to be able to distinguish between shows
+		// and movies
+		if (event instanceof PlayerEvent.Play) {
+			PlayerEvent.Play playEvent = (Play) event;
+			if (playEvent.data.item.type == PlayerEvent.Item.Type.EPISODE) {
+				updateItemsForCommand(XBMCBindingCommands.PLAYING_TVSHOW);
+			} else if (playEvent.data.item.type == PlayerEvent.Item.Type.MOVIE) {
+				updateItemsForCommand(XBMCBindingCommands.PLAYING_MOVIE);
+			}
+		}
+		
+		XBMCBindingCommands bindingCommand = XBMCBindingCommands.getBindingCommandByMethodName(methodName);
+		if (bindingCommand != null) {
+			updateItemsForCommand(bindingCommand);
+		} else {
+			logger.debug("Received unknown event " + methodName);
+		}
+	}
+
+	private void updateItemsForCommand(XBMCBindingCommands bindingCommand) {
+		List<XBMCBindingConfig> configs = bindingProvider.findBindingConfigs(deviceId, bindingCommand);
 		for (XBMCBindingConfig config : configs) {
-			State state = config.getStateForEvent(methodName);
+			State state = config.getStateForEvent(bindingCommand);
 			if (state != null) {
 				if (eventPublisher != null) {
 					logger.debug(deviceId + ": Posting update for item " + config.getItem().getName() + ": "

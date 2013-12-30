@@ -40,8 +40,8 @@ public class XBMCBindingConfig implements BindingConfig {
 		eventMap.put(bindingCommand, state);
 	}
 
-	public State getStateForEvent(String event) {
-		return eventMap.get(event);
+	public State getStateForEvent(XBMCBindingCommands bindingCommand) {
+		return eventMap.get(bindingCommand);
 	}
 
 	public XBMCBindingCommands getMethodNameForCommand(Command command) {
