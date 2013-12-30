@@ -1,8 +1,6 @@
 package org.openhab.binding.xbmc.internal;
 
 import java.lang.reflect.Constructor;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.core.library.types.DecimalType;
@@ -11,16 +9,13 @@ import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xbmc.android.jsonrpc.api.AbstractCall;
-import org.xbmc.android.jsonrpc.api.call.Application;
-import org.xbmc.android.jsonrpc.api.call.Player;
-import org.xbmc.android.jsonrpc.api.call.System;
 import org.xbmc.android.jsonrpc.api.model.GlobalModel.Toggle;
 
 public class CallAndEventParser {
 
 	private final static Logger logger = LoggerFactory.getLogger(CallAndEventParser.class);
 
-	private final static Integer DEFAULT_PLAYER_ID = 0;
+	private final static Integer DEFAULT_PLAYER_ID = 1;
 
 	public static AbstractCall<?> getCallForBindingCommandAndCommand(XBMCBindingCommands bindingCommand, Command command) {
 		Class<? extends AbstractCall<?>> clazz = bindingCommand.getCallClazz();
