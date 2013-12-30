@@ -14,22 +14,11 @@ import org.xbmc.android.jsonrpc.api.AbstractCall;
 import org.xbmc.android.jsonrpc.api.call.Application;
 import org.xbmc.android.jsonrpc.api.call.Player;
 import org.xbmc.android.jsonrpc.api.call.System;
-import org.xbmc.android.jsonrpc.api.model.AddonModel.Detail.Extrainfo;
 import org.xbmc.android.jsonrpc.api.model.GlobalModel.Toggle;
 
 public class CallAndEventParser {
 
 	private final static Logger logger = LoggerFactory.getLogger(CallAndEventParser.class);
-
-	private final static Map<String, Class<? extends AbstractCall<?>>> methodToCallMap = new HashMap<String, Class<? extends AbstractCall<?>>>();
-	static {
-		methodToCallMap.put(Application.Quit.API_TYPE, Application.Quit.class);
-		// TODO: Add parameters to calls
-		methodToCallMap.put(Application.SetMute.API_TYPE, Application.SetMute.class);
-		methodToCallMap.put(Player.PlayPause.API_TYPE, Player.PlayPause.class);
-		methodToCallMap.put(Player.Stop.API_TYPE, Player.Stop.class);
-		methodToCallMap.put(System.Shutdown.API_TYPE, System.Shutdown.class);
-	}
 
 	private final static Integer DEFAULT_PLAYER_ID = 0;
 
@@ -59,6 +48,9 @@ public class CallAndEventParser {
 			Integer volume = extractIntegerValueFromCommand(command);
 			call = instantiateInstance(clazz, volume);
 			break;
+		default:
+			call = null;
+			break;
 		}
 		return call;
 	}
@@ -71,25 +63,6 @@ public class CallAndEventParser {
 			result = Integer.valueOf(((PercentType) command).intValue());
 		}
 		return result;
-	}
-
-	public static AbstractCall<?> getCallForMethodAndCommand(String methodName, Command command) {
-		Object argument = null;
-		if (command instanceof DecimalType) {
-			argument = Integer.valueOf(((DecimalType) command).intValue());
-		} else if (command instanceof PercentType) {
-			argument = Integer.valueOf(((PercentType) command).intValue());
-		}
-		return getCallFromString(methodName, argument);
-	}
-
-	public static AbstractCall<?> getCallFromString(String in) {
-		return getCallFromString(in, null);
-	}
-
-	public static AbstractCall<?> getCallFromString(String methodName, Object argument) {
-		Class<? extends AbstractCall<?>> clazz = methodToCallMap.get(methodName);
-		return instantiateInstance(clazz, argument);
 	}
 
 	private static AbstractCall<?> instantiateInstance(Class<? extends AbstractCall<?>> clazz, Object... arguments) {
