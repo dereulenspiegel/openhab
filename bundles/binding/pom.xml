@@ -78,6 +78,7 @@
 	<module>org.openhab.binding.fs20</module>
 	<module>org.openhab.binding.intertechno</module>
 	<module>org.openhab.binding.xbmc</module>
+	<module>org.openhab.binding.xbmc.test</module>
   </modules>
 
 </project>
