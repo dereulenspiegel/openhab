@@ -10,16 +10,27 @@ import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractCULBinding<P extends BindingProvider> extends AbstractActiveBinding<P> implements ManagedService, CULListener {
-	
+/**
+ * Base class to develop new CUL based bindings. Many things regarding handling
+ * CUL devices are already implemented here. Simply implement the missing
+ * methods and don't worry about opening or closing the CUL handler.
+ * 
+ * @author Till Klocke
+ * 
+ * @param <P>
+ *            BindingProvider
+ */
+public abstract class AbstractCULBinding<P extends BindingProvider> extends AbstractActiveBinding<P> implements
+		ManagedService, CULListener {
+
 	private final static Logger logger = LoggerFactory.getLogger(AbstractCULBinding.class);
-	
+
 	protected final static String KEY_DEVICE_NAME = "device";
 
 	protected String deviceName;
 
 	protected CULHandler cul;
-	
+
 	protected void setNewDeviceName(String deviceName) {
 		if (deviceName == null) {
 			logger.error("Device name was null");
@@ -32,7 +43,7 @@ public abstract class AbstractCULBinding<P extends BindingProvider> extends Abst
 		this.deviceName = deviceName;
 		openCUL();
 	}
-	
+
 	protected void openCUL() {
 		try {
 			cul = CULManager.getOpenCULHandler(deviceName, CULMode.SLOW_RF);
@@ -48,7 +59,7 @@ public abstract class AbstractCULBinding<P extends BindingProvider> extends Abst
 			CULManager.close(cul);
 		}
 	}
-	
+
 	@Override
 	public final void updated(Dictionary<String, ?> config) throws ConfigurationException {
 		logger.debug("Received new config");
@@ -61,17 +72,17 @@ public abstract class AbstractCULBinding<P extends BindingProvider> extends Abst
 			} else {
 				setNewDeviceName(deviceName);
 			}
-			
-			try{
+
+			try {
 				dictionaryUpdated(config);
 				setProperlyConfigured(true);
-			} catch (ConfigurationException e){
+			} catch (ConfigurationException e) {
 				setProperlyConfigured(false);
 				throw e;
 			}
 		}
 	}
-	
+
 	protected abstract void dictionaryUpdated(Dictionary<String, ?> config) throws ConfigurationException;
 
 }
