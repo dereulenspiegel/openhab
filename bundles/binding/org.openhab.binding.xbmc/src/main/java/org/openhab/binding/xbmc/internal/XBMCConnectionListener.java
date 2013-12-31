@@ -2,6 +2,7 @@ package org.openhab.binding.xbmc.internal;
 
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.core.events.EventPublisher;
@@ -20,6 +21,7 @@ import org.xbmc.android.jsonrpc.io.ConnectionListener;
 import org.xbmc.android.jsonrpc.io.JavaConnectionManager;
 import org.xbmc.android.jsonrpc.notification.AbstractEvent;
 import org.xbmc.android.jsonrpc.notification.PlayerEvent;
+import org.xbmc.android.jsonrpc.notification.PlayerEvent.Item;
 import org.xbmc.android.jsonrpc.notification.PlayerEvent.Play;
 
 public class XBMCConnectionListener implements ConnectionListener {
@@ -115,6 +117,7 @@ public class XBMCConnectionListener implements ConnectionListener {
 			} else if (playEvent.data.item.type == PlayerEvent.Item.Type.MOVIE) {
 				updateItemsForCommand(XBMCBindingCommands.PLAYING_MOVIE);
 			}
+			updateCurrentPlaying(playEvent);
 		}
 
 		XBMCBindingCommands bindingCommand = XBMCBindingCommands.getBindingCommandByMethodName(methodName);
@@ -122,6 +125,21 @@ public class XBMCConnectionListener implements ConnectionListener {
 			updateItemsForCommand(bindingCommand);
 		} else {
 			logger.debug("Received unknown event " + methodName);
+		}
+	}
+
+	private void updateCurrentPlaying(PlayerEvent.Play playEvent) {
+		Item item = playEvent.data.item;
+		String title = null;
+		if (item.type == Item.Type.SONG) {
+			title = item.artist + " - " + item.album + " - " + item.title;
+		} else if (item.type == Item.Type.EPISODE) {
+			title = item.showtitle + " - S" + item.season + "E" + item.episode + " - " + item.title;
+		} else if (item.type == Item.Type.MOVIE) {
+			title = item.title;
+		}
+		if (!StringUtils.isEmpty(title)) {
+			updateItemsForCommand(XBMCBindingCommands.PLAYING_TITLE, title);
 		}
 	}
 

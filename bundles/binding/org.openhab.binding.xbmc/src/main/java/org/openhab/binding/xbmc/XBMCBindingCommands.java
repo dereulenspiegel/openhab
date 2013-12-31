@@ -14,6 +14,7 @@ public enum XBMCBindingCommands {
 	PLAY(Player.PlayPause.class, PlayerEvent.Play.METHOD), //
 	PLAYING_MOVIE(null, null), //
 	PLAYING_TVSHOW(null, null), //
+	PLAYING_TITLE(null,null), //
 	PAUSE(Player.PlayPause.class, PlayerEvent.Pause.METHOD), //
 	STOP(Player.Stop.class, PlayerEvent.Stop.METHOD), //
 	SHUTDOWN(System.Shutdown.class, null), //
