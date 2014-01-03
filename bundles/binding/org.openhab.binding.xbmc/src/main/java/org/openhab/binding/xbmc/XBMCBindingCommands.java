@@ -21,7 +21,9 @@ public enum XBMCBindingCommands {
 	MUTE(Application.SetMute.class, null), //
 	UNMUTE(Application.SetMute.class, null), //
 	// Dirty fix to have an ebent method name when we query the volume of XBMC
-	VOLUME(Application.SetVolume.class, Application.SetVolume.API_TYPE);
+	VOLUME(Application.SetVolume.class, Application.SetVolume.API_TYPE),
+	VERSION(null,null),
+	NAME(null,null);
 
 	private final static Map<String, XBMCBindingCommands> methodMap = new HashMap<String, XBMCBindingCommands>();
 	static {

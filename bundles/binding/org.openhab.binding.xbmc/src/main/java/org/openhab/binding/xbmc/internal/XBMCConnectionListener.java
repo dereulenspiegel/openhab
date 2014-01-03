@@ -64,6 +64,7 @@ public class XBMCConnectionListener implements ConnectionListener {
 
 			@Override
 			public void onResponse(AbstractCall<PropertyValue> result) {
+				logger.debug("Received updated properties for " + deviceId);
 				currentVolume = result.getResult().volume;
 				isMute = result.getResult().muted;
 				name = result.getResult().name;
@@ -81,11 +82,18 @@ public class XBMCConnectionListener implements ConnectionListener {
 
 	private void updateItemsRepresentingProperties() {
 		updateItemsForCommand(XBMCBindingCommands.VOLUME, currentVolume);
+		updateItemsForCommand(XBMCBindingCommands.NAME, name);
+		updateVersion();
 		if (isMute != null && isMute == Boolean.TRUE) {
 			updateItemsForCommand(XBMCBindingCommands.MUTE);
 		} else {
 			updateItemsForCommand(XBMCBindingCommands.UNMUTE);
 		}
+	}
+
+	private void updateVersion() {
+		String versionString = version.major + "." + version.minor + "." + version.REVISION;
+		updateItemsForCommand(XBMCBindingCommands.VERSION, versionString);
 	}
 
 	@Override
@@ -123,6 +131,9 @@ public class XBMCConnectionListener implements ConnectionListener {
 			}
 			updateCurrentPlaying(playEvent);
 		}
+		if (event instanceof PlayerEvent.Stop) {
+			updateItemsForCommand(XBMCBindingCommands.PLAYING_TITLE, "");
+		}
 
 		XBMCBindingCommands bindingCommand = XBMCBindingCommands.getBindingCommandByMethodName(methodName);
 		if (bindingCommand != null) {
@@ -135,6 +146,8 @@ public class XBMCConnectionListener implements ConnectionListener {
 	private void updateCurrentPlaying(PlayerEvent.Play playEvent) {
 		Item item = playEvent.data.item;
 		String title = null;
+		int id = item.id;
+		// FIXME Only the item is transmitted correctly. We must query the library to get these infos.
 		if (item.type == Item.Type.SONG) {
 			title = item.artist + " - " + item.album + " - " + item.title;
 		} else if (item.type == Item.Type.EPISODE) {
@@ -152,9 +165,13 @@ public class XBMCConnectionListener implements ConnectionListener {
 	}
 
 	private void updateItemsForCommand(XBMCBindingCommands bindingCommand, Object argument) {
+		logger.debug("Searching item for binding command " + bindingCommand.toString());
 		List<XBMCBindingConfig> configs = bindingProvider.findBindingConfigs(deviceId, bindingCommand);
+		if (configs.isEmpty()) {
+			logger.debug("Can't find any items for binding command " + bindingCommand.toString());
+		}
 		for (XBMCBindingConfig config : configs) {
-			State state = getState(config, bindingCommand, null);
+			State state = getState(config, bindingCommand, argument);
 			if (state != null) {
 				if (eventPublisher != null) {
 					logger.debug(deviceId + ": Posting update for item " + config.getItem().getName() + ": "
@@ -163,6 +180,9 @@ public class XBMCConnectionListener implements ConnectionListener {
 				} else {
 					logger.error("EventPublisher was NULL during creation of this listener...");
 				}
+			} else {
+				logger.debug("Can't find valid state for item " + config.getItem().getName() + " for binding command "
+						+ bindingCommand.toString());
 			}
 		}
 	}

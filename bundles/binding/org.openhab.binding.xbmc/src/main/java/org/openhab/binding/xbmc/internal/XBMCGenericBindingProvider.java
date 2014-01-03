@@ -38,6 +38,7 @@ import java.util.regex.Pattern;
 import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.core.items.Item;
+import org.openhab.core.library.items.NumberItem;
 import org.openhab.core.library.items.StringItem;
 import org.openhab.core.library.items.SwitchItem;
 import org.openhab.core.library.types.DecimalType;
@@ -93,10 +94,13 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 	@Override
 	public void validateItemType(Item item, String bindingConfig) throws BindingConfigParseException {
 		// TODO To which items can we bind? Probably more than switches...
-		if (!(item instanceof SwitchItem) && !(item instanceof StringItem)) {
-			throw new BindingConfigParseException("item '" + item.getName() + "' is of type '"
-					+ item.getClass().getSimpleName()
-					+ "', only SwitchItems and StringItems are allowed - please check your *.items configuration");
+		if (!(item instanceof SwitchItem) && !(item instanceof StringItem) && !(item instanceof NumberItem)) {
+			throw new BindingConfigParseException(
+					"item '"
+							+ item.getName()
+							+ "' is of type '"
+							+ item.getClass().getSimpleName()
+							+ "', only SwitchItems, NumberItems and StringItems are allowed - please check your *.items configuration");
 		}
 	}
 
@@ -138,6 +142,12 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 				}
 				if (state != null) {
 					config.addStateAndEvent(state, bindingCommand);
+				}
+				if (command == null && state == null && "*".equals(entry.getKey())) {
+					state = UnDefType.NULL;
+					config.addStateAndEvent(state, bindingCommand);
+				} else if (command == null && state == null) {
+					logger.warn(entry.getKey() + " is neither a valid openHAB state or command");
 				}
 			}
 		}
