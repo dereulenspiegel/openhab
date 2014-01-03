@@ -14,8 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xbmc.android.jsonrpc.api.AbstractCall;
 import org.xbmc.android.jsonrpc.api.call.Application.GetProperties;
+import org.xbmc.android.jsonrpc.api.call.VideoLibrary.GetEpisodeDetails;
+import org.xbmc.android.jsonrpc.api.call.VideoLibrary.GetMovieDetails;
+import org.xbmc.android.jsonrpc.api.model.VideoModel;
 import org.xbmc.android.jsonrpc.api.model.ApplicationModel.PropertyValue;
 import org.xbmc.android.jsonrpc.api.model.ApplicationModel.PropertyValue.Version;
+import org.xbmc.android.jsonrpc.api.model.VideoModel.EpisodeDetail;
+import org.xbmc.android.jsonrpc.api.model.VideoModel.MovieDetail;
 import org.xbmc.android.jsonrpc.io.ApiCallback;
 import org.xbmc.android.jsonrpc.io.ConnectionListener;
 import org.xbmc.android.jsonrpc.io.JavaConnectionManager;
@@ -145,16 +150,58 @@ public class XBMCConnectionListener implements ConnectionListener {
 
 	private void updateCurrentPlaying(PlayerEvent.Play playEvent) {
 		Item item = playEvent.data.item;
-		String title = null;
 		int id = item.id;
-		// FIXME Only the item is transmitted correctly. We must query the library to get these infos.
+		// FIXME Only the item is transmitted correctly. We must query the
+		// library to get these infos.
 		if (item.type == Item.Type.SONG) {
-			title = item.artist + " - " + item.album + " - " + item.title;
+			// TODO
 		} else if (item.type == Item.Type.EPISODE) {
-			title = item.showtitle + " - S" + item.season + "E" + item.episode + " - " + item.title;
+			updateEpisodeDetails(id);
 		} else if (item.type == Item.Type.MOVIE) {
-			title = item.title;
+			updateMovieDetails(id);
 		}
+
+	}
+
+	private void updateMovieDetails(int id) {
+		GetMovieDetails call = new GetMovieDetails(id, "title", "year");
+		conManager.call(call, new ApiCallback<VideoModel.MovieDetail>() {
+
+			@Override
+			public void onError(int arg0, String arg1, String arg2) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onResponse(AbstractCall<MovieDetail> call) {
+				MovieDetail detail = call.getResult();
+				String title = detail.title + " (" + detail.year + ")";
+				updatePlayingTitle(title);
+			}
+		});
+	}
+
+	private void updateEpisodeDetails(int id) {
+		GetEpisodeDetails call = new GetEpisodeDetails(id, "title", "season", "episode", "showtitle");
+		conManager.call(call, new ApiCallback<VideoModel.EpisodeDetail>() {
+
+			@Override
+			public void onError(int arg0, String arg1, String arg2) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onResponse(AbstractCall<EpisodeDetail> call) {
+				EpisodeDetail detail = call.getResult();
+				String title = detail.showtitle + " (S" + detail.season + "-E" + detail.episode + ") - " + detail.title;
+				updatePlayingTitle(title);
+			}
+		});
+	}
+
+	private void updatePlayingTitle(String title) {
 		if (!StringUtils.isEmpty(title)) {
 			updateItemsForCommand(XBMCBindingCommands.PLAYING_TITLE, title);
 		}
