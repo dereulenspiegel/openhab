@@ -30,9 +30,7 @@ package org.openhab.binding.xbmc.internal;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,14 +38,18 @@ import java.util.regex.Pattern;
 import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.core.items.Item;
+import org.openhab.core.library.items.StringItem;
 import org.openhab.core.library.items.SwitchItem;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.TypeParser;
+import org.openhab.core.types.UnDefType;
 import org.openhab.model.item.binding.AbstractGenericBindingProvider;
 import org.openhab.model.item.binding.BindingConfigParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -59,6 +61,8 @@ import com.google.common.collect.Multimap;
  * @since 1.4.0
  */
 public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider implements XBMCBindingProvider {
+
+	private final static Logger logger = LoggerFactory.getLogger(XBMCGenericBindingProvider.class);
 
 	private final static Pattern CONFIG_PATTERN = Pattern.compile("^(.*?)\\((.+)\\)$");
 
@@ -73,6 +77,7 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 
 		allowedStates.add(OnOffType.class);
 		allowedStates.add(DecimalType.class);
+		allowedStates.add(UnDefType.class);
 	}
 
 	/**
@@ -88,10 +93,10 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 	@Override
 	public void validateItemType(Item item, String bindingConfig) throws BindingConfigParseException {
 		// TODO To which items can we bind? Probably more than switches...
-		if (!(item instanceof SwitchItem)) {
+		if (!(item instanceof SwitchItem) && !(item instanceof StringItem)) {
 			throw new BindingConfigParseException("item '" + item.getName() + "' is of type '"
 					+ item.getClass().getSimpleName()
-					+ "', only SwitchItems are allowed - please check your *.items configuration");
+					+ "', only SwitchItems and StringItems are allowed - please check your *.items configuration");
 		}
 	}
 
@@ -114,34 +119,40 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 
 		String deviceId = matcher.group(1);
 		String commandsAndStates = matcher.group(2);
-		Map<String, String> configMap = createStringMap(commandsAndStates);
+		Multimap<String, String> configMap = createStringMap(commandsAndStates);
 		config.setDeviceId(deviceId);
 		config.setItem(item);
-		for (Entry<String, String> entry : configMap.entrySet()) {
-			XBMCBindingCommands bindingCommand = XBMCBindingCommands.valueOf(entry.getValue());
-			Command command = TypeParser.parseCommand(allowedCommands, entry.getKey());
-			State state = TypeParser.parseState(allowedStates, entry.getKey());
+		for (Entry<String, Collection<String>> entry : configMap.asMap().entrySet()) {
+			for (String stringCommand : entry.getValue()) {
+				XBMCBindingCommands bindingCommand = XBMCBindingCommands.valueOf(stringCommand);
+				if (bindingCommand == null) {
+					logger.warn("This command is unknown: " + stringCommand);
+					continue;
+				}
+				Command command = TypeParser.parseCommand(allowedCommands, entry.getKey());
+				State state = TypeParser.parseState(allowedStates, entry.getKey());
 
-			if (command != null) {
-				// TODO Parse Call from MethodName
-				config.addCommandAndCall(command, bindingCommand);
-			}
-			if (state != null) {
-				config.addStateAndEvent(state, bindingCommand);
+				if (command != null) {
+					// TODO Parse Call from MethodName
+					config.addCommandAndCall(command, bindingCommand);
+				}
+				if (state != null) {
+					config.addStateAndEvent(state, bindingCommand);
+				}
 			}
 		}
 		bindingConfigs.put(deviceId, config);
 		addBindingConfig(item, config);
 	}
 
-	private Map<String, String> createStringMap(String commandsAndStates) {
+	private Multimap<String, String> createStringMap(String commandsAndStates) {
 		String[] parts = null;
 		if (commandsAndStates.indexOf(',') > 0) {
 			parts = commandsAndStates.split(",");
 		} else {
 			parts = new String[] { commandsAndStates };
 		}
-		Map<String, String> map = new HashMap<String, String>();
+		Multimap<String, String> map = HashMultimap.create();
 		for (String line : parts) {
 			String[] lineParts = line.split(":");
 			map.put(lineParts[0], lineParts[1]);

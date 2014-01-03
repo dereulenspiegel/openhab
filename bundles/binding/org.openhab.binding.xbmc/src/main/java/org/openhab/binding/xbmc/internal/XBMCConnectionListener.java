@@ -75,6 +75,10 @@ public class XBMCConnectionListener implements ConnectionListener {
 		});
 	}
 
+	public String getDeviceId() {
+		return deviceId;
+	}
+
 	private void updateItemsRepresentingProperties() {
 		updateItemsForCommand(XBMCBindingCommands.VOLUME, currentVolume);
 		if (isMute != null && isMute == Boolean.TRUE) {
@@ -108,7 +112,7 @@ public class XBMCConnectionListener implements ConnectionListener {
 		String methodName = event.getMethod();
 		logger.debug("Received event: " + methodName);
 
-		// Special case, we wan't to be able to distinguish between shows
+		// Special case, we want to be able to distinguish between shows
 		// and movies
 		if (event instanceof PlayerEvent.Play) {
 			PlayerEvent.Play playEvent = (Play) event;

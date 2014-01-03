@@ -43,7 +43,6 @@ import org.openhab.binding.xbmc.XBMCBindingCommands;
 import org.openhab.binding.xbmc.XBMCBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.types.Command;
-import org.openhab.core.types.State;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
@@ -106,6 +105,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 	protected void execute() {
 		logger.debug("Updating properties of all instances");
 		for (XBMCConnectionListener listener : clientMap.values()) {
+			logger.debug("Updating properties of " + listener.getDeviceId());
 			listener.updateProperties();
 		}
 	}
@@ -121,7 +121,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 		if (config != null) {
 			logger.debug("Found config for item " + itemName);
 			XBMCBindingCommands bindingCommand = config.getMethodNameForCommand(command);
-			AbstractCall call = CallAndEventParser.getCallForBindingCommandAndCommand(bindingCommand, command);
+			final AbstractCall call = CallAndEventParser.getCallForBindingCommandAndCommand(bindingCommand, command);
 			logger.debug("Executing call " + call.getClass().getSimpleName() + " for command " + command.format("%s"));
 			JavaConnectionManager conManager = clientMap.get(config.getDeviceId()).getConnectionManager();
 			if (conManager != null && call != null) {
@@ -136,7 +136,7 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 
 					@Override
 					public void onResponse(AbstractCall arg0) {
-						// TODO Auto-generated method stub
+						logger.debug("Call " + arg0.getName() + "(" + arg0.getId() + ") was successful");
 
 					}
 				});
@@ -144,17 +144,6 @@ public class XBMCBinding extends AbstractActiveBinding<XBMCBindingProvider> impl
 				logger.error("Either ApiCall for command could not be found or device connection can't be found");
 			}
 		}
-	}
-
-	/**
-	 * @{inheritDoc
-	 */
-	@Override
-	protected void internalReceiveUpdate(String itemName, State newState) {
-		// the code being executed when a state was sent on the openHAB
-		// event bus goes here. This method is only called if one of the
-		// BindingProviders provide a binding for the given 'itemName'.
-		logger.debug("internalReceiveUpdate() is called!");
 	}
 
 	private XBMCBindingConfig findConfigByItemName(String itemName) {
