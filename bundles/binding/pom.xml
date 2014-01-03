@@ -90,6 +90,7 @@
     <module>org.openhab.binding.insteonhub</module>
     <module>org.openhab.binding.pioneeravr</module>
 	<module>org.openhab.binding.em.test</module>
+	<module>org.openhab.binding.s300th.test</module>
   </modules>
 
 </project>
