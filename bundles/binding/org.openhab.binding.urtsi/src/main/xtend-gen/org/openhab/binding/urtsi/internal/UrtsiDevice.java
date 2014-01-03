@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.xtext.xbase.lib.CollectionLiterals;
+import org.eclipse.xtext.xbase.lib.Conversions;
 import org.eclipse.xtext.xbase.lib.Exceptions;
 import org.eclipse.xtext.xbase.lib.Functions.Function0;
 import org.eclipse.xtext.xbase.lib.Functions.Function1;
@@ -192,7 +193,7 @@ public class UrtsiDevice {
       Boolean _xblockexpression = null;
       {
         ArrayList<String> _newArrayList = CollectionLiterals.<String>newArrayList(msg, this.port);
-        UrtsiDevice.logger.debug("Writing \'{}\' to serial port {}", _newArrayList);
+        UrtsiDevice.logger.debug("Writing \'{}\' to serial port {}", ((Object[])Conversions.unwrapArray(_newArrayList, Object.class)));
         final Function1<Object,Boolean> _function = new Function1<Object,Boolean>() {
             public Boolean apply(final Object it) {
               try {
@@ -250,7 +251,7 @@ public class UrtsiDevice {
                                 final IOException e = (IOException)_t;
                                 String _message = e.getMessage();
                                 ArrayList<String> _newArrayList = CollectionLiterals.<String>newArrayList(UrtsiDevice.this.port, _message);
-                                UrtsiDevice.logger.debug("Error receiving data on serial port {}: {}", _newArrayList);
+                                UrtsiDevice.logger.debug("Error receiving data on serial port {}: {}", ((Object[])Conversions.unwrapArray(_newArrayList, Object.class)));
                               } else {
                                 throw Exceptions.sneakyThrow(_t);
                               }
@@ -260,8 +261,8 @@ public class UrtsiDevice {
                       }
                     };
                   UrtsiDevice.this.serialPort.addEventListener(new SerialPortEventListener() {
-                      public void serialEvent(SerialPortEvent p0) {
-                        _function.apply(p0);
+                      public void serialEvent(SerialPortEvent arg0) {
+                        _function.apply(arg0);
                       }
                   });
                   UrtsiDevice.this.serialPort.notifyOnDataAvailable(true);
@@ -300,7 +301,7 @@ public class UrtsiDevice {
                     final IOException e = (IOException)_t;
                     String _message = e.getMessage();
                     ArrayList<String> _newArrayList = CollectionLiterals.<String>newArrayList(msg, UrtsiDevice.this.port, _message);
-                    UrtsiDevice.logger.error("Error writing \'{}\' to serial port {}: {}", _newArrayList);
+                    UrtsiDevice.logger.error("Error writing \'{}\' to serial port {}: {}", ((Object[])Conversions.unwrapArray(_newArrayList, Object.class)));
                   } else {
                     throw Exceptions.sneakyThrow(_t);
                   }
