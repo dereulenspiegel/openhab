@@ -24,8 +24,24 @@ public class CallAndEventParser {
 
 	private final static Logger logger = LoggerFactory.getLogger(CallAndEventParser.class);
 
+	/**
+	 * The id of the player we control with our calls. XBMC can have mutliple
+	 * player at once, but so far player does always the trick.
+	 */
 	private final static Integer DEFAULT_PLAYER_ID = 1;
 
+	/**
+	 * Depending on the binding command we try to create a call which we can
+	 * send to XBMC. The call can be parametrized with a received command. For
+	 * example we can specify a DecimalType for the volume command to set the
+	 * volume to the value specified by the DecimalType
+	 * 
+	 * @param bindingCommand
+	 *            the command which was configured in the item
+	 * @param command
+	 *            optional openHAB command to parametrize the call. May be null
+	 * @return a call object or null.
+	 */
 	public static AbstractCall<?> getCallForBindingCommandAndCommand(XBMCBindingCommands bindingCommand, Command command) {
 		Class<? extends AbstractCall<?>> clazz = bindingCommand.getCallClazz();
 		AbstractCall<?> call = null;

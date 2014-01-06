@@ -137,13 +137,14 @@ public class XBMCGenericBindingProvider extends AbstractGenericBindingProvider i
 				State state = TypeParser.parseState(allowedStates, entry.getKey());
 
 				if (command != null) {
-					// TODO Parse Call from MethodName
 					config.addCommandAndCall(command, bindingCommand);
 				}
 				if (state != null) {
 					config.addStateAndEvent(state, bindingCommand);
 				}
 				if (command == null && state == null && "*".equals(entry.getKey())) {
+					// Workaround to be able to add binding commands which get
+					// updated via property update
 					state = UnDefType.NULL;
 					config.addStateAndEvent(state, bindingCommand);
 				} else if (command == null && state == null) {

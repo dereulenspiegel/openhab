@@ -16,9 +16,9 @@ import org.xbmc.android.jsonrpc.api.AbstractCall;
 import org.xbmc.android.jsonrpc.api.call.Application.GetProperties;
 import org.xbmc.android.jsonrpc.api.call.VideoLibrary.GetEpisodeDetails;
 import org.xbmc.android.jsonrpc.api.call.VideoLibrary.GetMovieDetails;
-import org.xbmc.android.jsonrpc.api.model.VideoModel;
 import org.xbmc.android.jsonrpc.api.model.ApplicationModel.PropertyValue;
 import org.xbmc.android.jsonrpc.api.model.ApplicationModel.PropertyValue.Version;
+import org.xbmc.android.jsonrpc.api.model.VideoModel;
 import org.xbmc.android.jsonrpc.api.model.VideoModel.EpisodeDetail;
 import org.xbmc.android.jsonrpc.api.model.VideoModel.MovieDetail;
 import org.xbmc.android.jsonrpc.io.ApiCallback;
@@ -28,7 +28,17 @@ import org.xbmc.android.jsonrpc.notification.AbstractEvent;
 import org.xbmc.android.jsonrpc.notification.PlayerEvent;
 import org.xbmc.android.jsonrpc.notification.PlayerEvent.Item;
 import org.xbmc.android.jsonrpc.notification.PlayerEvent.Play;
+import org.xbmc.android.jsonrpc.notification.SystemEvent;
 
+/**
+ * This class is responsible for listening for events on a XBMC instance. Events
+ * can be events send by XBMC or connect/disconnect events. Additionally this
+ * class can be used to query the properties like volume, mute status etc. of a
+ * XBMC instance.
+ * 
+ * @author Till Klocke
+ * @since 1.4.0
+ */
 public class XBMCConnectionListener implements ConnectionListener {
 
 	private Logger logger = LoggerFactory.getLogger(XBMCConnectionListener.class);
@@ -40,6 +50,7 @@ public class XBMCConnectionListener implements ConnectionListener {
 
 	private JavaConnectionManager conManager;
 
+	// Properties queried from the instance
 	private Integer currentVolume;
 	private Boolean isMute;
 	private String name;
@@ -57,6 +68,10 @@ public class XBMCConnectionListener implements ConnectionListener {
 		return conManager;
 	}
 
+	/**
+	 * Sends a GetProperty request to XBMC and then updates all items which are
+	 * relevant for the received values.
+	 */
 	public void updateProperties() {
 		GetProperties call = new GetProperties("volume", "muted", "name", "version");
 		conManager.call(call, new ApiCallback<PropertyValue>() {
@@ -81,10 +96,18 @@ public class XBMCConnectionListener implements ConnectionListener {
 		});
 	}
 
+	/**
+	 * Return the device id, which is used in the configuration file
+	 * 
+	 * @return the configured device id
+	 */
 	public String getDeviceId() {
 		return deviceId;
 	}
 
+	/**
+	 * Issues updates for all items representing properties of the XBMC instance
+	 */
 	private void updateItemsRepresentingProperties() {
 		updateItemsForCommand(XBMCBindingCommands.VOLUME, currentVolume);
 		updateItemsForCommand(XBMCBindingCommands.NAME, name);
@@ -97,7 +120,7 @@ public class XBMCConnectionListener implements ConnectionListener {
 	}
 
 	private void updateVersion() {
-		String versionString = version.major + "." + version.minor + "." + version.REVISION;
+		String versionString = version.major + "." + version.minor + "." + version.revision;
 		updateItemsForCommand(XBMCBindingCommands.VERSION, versionString);
 	}
 
@@ -106,6 +129,11 @@ public class XBMCConnectionListener implements ConnectionListener {
 		logger.debug(deviceId + ": Connected");
 	}
 
+	/**
+	 * When we are disconnected (due to an exception or when XBMC shuts down),
+	 * we try to reconnect after 5 seconds. We do this until we succeed
+	 * connecting or are shut down.
+	 */
 	@Override
 	public void disconnected(Exception error) {
 		logger.debug(deviceId + ": Disconnected, Trying to reconnect");
@@ -120,13 +148,20 @@ public class XBMCConnectionListener implements ConnectionListener {
 		conManager.reconnect();
 	}
 
+	/**
+	 * Notifications send from XBMC are handled here.
+	 */
 	@Override
 	public void notificationReceived(AbstractEvent event) {
 		String methodName = event.getMethod();
 		logger.debug("Received event: " + methodName);
-
+		if (event instanceof SystemEvent.Quit) {
+			// We should at least try to connect gracefully when XBMC is shut
+			// down.
+			conManager.disconnect();
+		}
 		// Special case, we want to be able to distinguish between shows
-		// and movies
+		// and movies, so we signal two more events.
 		if (event instanceof PlayerEvent.Play) {
 			PlayerEvent.Play playEvent = (Play) event;
 			if (playEvent.data.item.type == PlayerEvent.Item.Type.EPISODE) {
@@ -136,6 +171,8 @@ public class XBMCConnectionListener implements ConnectionListener {
 			}
 			updateCurrentPlaying(playEvent);
 		}
+		// If XBMC has stopped playing we don't need to display the played title
+		// any longer
 		if (event instanceof PlayerEvent.Stop) {
 			updateItemsForCommand(XBMCBindingCommands.PLAYING_TITLE, "");
 		}
@@ -148,17 +185,34 @@ public class XBMCConnectionListener implements ConnectionListener {
 		}
 	}
 
+	/**
+	 * Details about the currently played title are not available in the
+	 * PlayerEvent so we need to query the database for them
+	 * 
+	 * @param playEvent
+	 */
 	private void updateCurrentPlaying(PlayerEvent.Play playEvent) {
 		Item item = playEvent.data.item;
 		int id = item.id;
-		// FIXME Only the item is transmitted correctly. We must query the
-		// library to get these infos.
-		if (item.type == Item.Type.SONG) {
-			// TODO
-		} else if (item.type == Item.Type.EPISODE) {
+		switch (item.type) {
+		case Item.Type.EPISODE:
 			updateEpisodeDetails(id);
-		} else if (item.type == Item.Type.MOVIE) {
+			break;
+		case Item.Type.MOVIE:
 			updateMovieDetails(id);
+			break;
+		case Item.Type.MUSICVIDEO:
+			// TODO
+			break;
+		case Item.Type.SONG:
+			// TODO
+			break;
+		case Item.Type.UNKNOWN:
+			updatePlayingTitle("Unknown type");
+			break;
+		default:
+			// TODO
+			break;
 		}
 
 	}
