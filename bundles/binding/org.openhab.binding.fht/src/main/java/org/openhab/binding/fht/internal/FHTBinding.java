@@ -118,6 +118,7 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 	private String reportsCronExpression;
 	private boolean requestReports;
 
+	private CULManager culManager;
 	private CULHandler cul;
 
 	private JobKey updateTimeJobKey;
@@ -141,7 +142,7 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 
 	public void deactivate() {
 		if (cul != null) {
-			CULManager.close(cul);
+			culManager.close(cul);
 		}
 		unscheduleJob(requestReportJobKey);
 		unscheduleJob(updateTimeJobKey);
@@ -150,7 +151,7 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 	private void bindCULHandler() {
 		if (!StringUtils.isEmpty(deviceName)) {
 			try {
-				cul = CULManager.getOpenCULHandler(deviceName, CULMode.SLOW_RF);
+				cul = culManager.getOpenCULHandler(deviceName, CULMode.SLOW_RF);
 				cul.registerListener(this);
 				cul.send("T01" + housecode);
 			} catch (CULDeviceException e) {
@@ -173,7 +174,7 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 		if (!StringUtils.isEmpty(newDeviceName)) {
 			if (cul != null) {
 				cul.unregisterListener(this);
-				CULManager.close(cul);
+				culManager.close(cul);
 			}
 			deviceName = newDeviceName;
 			bindCULHandler();
@@ -655,6 +656,14 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 
 		}
 
+	}
+	
+	public void setCULManager(CULManager manager){
+		this.culManager = manager;
+	}
+	
+	public void unsetCULManager(CULManager manager){
+		this.culManager = null;
 	}
 
 }
