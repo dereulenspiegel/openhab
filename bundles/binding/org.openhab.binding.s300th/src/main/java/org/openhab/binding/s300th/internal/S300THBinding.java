@@ -14,20 +14,14 @@ import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.s300th.S300THBindingProvider;
 import org.openhab.binding.s300th.internal.S300THGenericBindingProvider.S300THBindingConfig;
 import org.openhab.binding.s300th.internal.S300THGenericBindingProvider.S300THBindingConfig.Datapoint;
-import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.items.Item;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
-import org.openhab.io.transport.cul.CULDeviceException;
-import org.openhab.io.transport.cul.CULHandler;
-import org.openhab.io.transport.cul.CULListener;
-import org.openhab.io.transport.cul.CULManager;
+import org.openhab.io.transport.cul.AbstractCULBinding;
 import org.openhab.io.transport.cul.CULMode;
 import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Implement this class if you are going create an actively polling service like
@@ -36,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * @author Till Klocke
  * @since 1.4.0
  */
-public class S300THBinding extends AbstractActiveBinding<S300THBindingProvider> implements ManagedService, CULListener {
+public class S300THBinding extends AbstractCULBinding<S300THBindingProvider> {
 
 	private static final Logger logger = LoggerFactory.getLogger(S300THBinding.class);
 
@@ -48,49 +42,7 @@ public class S300THBinding extends AbstractActiveBinding<S300THBindingProvider> 
 	 */
 	private long refreshInterval = 60000;
 
-	private final static String KEY_DEVICE_NAME = "device";
-
-	private String deviceName;
-
-	private CULHandler cul;
-
 	public S300THBinding() {
-	}
-
-	public void activate() {
-	}
-
-	public void deactivate() {
-		closeCUL();
-	}
-
-	private void setNewDeviceName(String deviceName) {
-		if (deviceName == null) {
-			logger.error("Device name was null");
-			return;
-		}
-		if (this.deviceName != null && this.deviceName.equals(deviceName)) {
-			return;
-		}
-		closeCUL();
-		this.deviceName = deviceName;
-		openCUL();
-	}
-
-	private void openCUL() {
-		try {
-			cul = CULManager.getOpenCULHandler(deviceName, CULMode.SLOW_RF);
-			cul.registerListener(this);
-		} catch (CULDeviceException e) {
-			logger.error("Can't open CUL handler for device " + deviceName, e);
-		}
-	}
-
-	private void closeCUL() {
-		if (cul != null) {
-			cul.unregisterListener(this);
-			CULManager.close(cul);
-		}
 	}
 
 	/**
@@ -118,61 +70,6 @@ public class S300THBinding extends AbstractActiveBinding<S300THBindingProvider> 
 	}
 
 	/**
-	 * @{inheritDoc
-	 */
-	@Override
-	public void updated(Dictionary<String, ?> config) throws ConfigurationException {
-		logger.debug("Received new config");
-		if (config != null) {
-
-			// to override the default refresh interval one has to add a
-			// parameter to openhab.cfg like
-			// <bindingName>:refresh=<intervalInMs>
-			String refreshIntervalString = (String) config.get("refresh");
-			if (StringUtils.isNotBlank(refreshIntervalString)) {
-				refreshInterval = Long.parseLong(refreshIntervalString);
-			}
-			String deviceName = (String) config.get(KEY_DEVICE_NAME);
-			if (StringUtils.isEmpty(deviceName)) {
-				logger.error("No device name configured");
-				setProperlyConfigured(false);
-				throw new ConfigurationException(KEY_DEVICE_NAME, "The device name can't be empty");
-			} else {
-				setNewDeviceName(deviceName);
-			}
-
-			setProperlyConfigured(true);
-			// read further config parameters here ...
-
-		}
-	}
-
-	@Override
-	public void dataReceived(String data) {
-		if (data.startsWith("K")) {
-			int firstByte = Integer.parseInt(data.substring(1, 2), 16);
-			int typByte = Integer.parseInt(data.substring(2, 3), 16) & 7;
-			int sfirstByte = firstByte & 7;
-
-			if (sfirstByte == 7) {
-				logger.debug("Received WS7000 message, but parsing for WS7000 is not implemented");
-				// TODO parse different sensors from WS7000 (?)
-			} else {
-				if (data.length() > 8 && data.length() < 13) {
-					// S300TH default size = 9 characters
-					parseS300THData(data);
-				} else if (data.length() > 14 && data.length() < 20) {
-					// KS300 default size = 15 characters.
-					// sometime we got values with more characters.
-					parseKS300Data(data);
-				} else {
-					logger.warn("Received unparseable message: " + data);
-				}
-			}
-		}
-	}
-
-	/**
 	 * Parse KS 300 data
 	 * 
 	 * @param data
@@ -186,7 +83,7 @@ public class S300THBinding extends AbstractActiveBinding<S300THBindingProvider> 
 		boolean isRaining = ParseUtils.isKS300Raining(data);
 
 		logger.debug("Received data '" + data + "' from device with address ks300 : temperature: " + temperature
-				+ " humidity: " + humidity + " wind: " + windValue + " rain: " + rainValue + " isRain: " + isRaining );
+				+ " humidity: " + humidity + " wind: " + windValue + " rain: " + rainValue + " isRain: " + isRaining);
 
 		for (Datapoint datapoint : Datapoint.values()) {
 			S300THBindingConfig config = findConfig(KS_300_ADDRESS, datapoint);
@@ -228,8 +125,8 @@ public class S300THBinding extends AbstractActiveBinding<S300THBindingProvider> 
 		String address = ParseUtils.parseS300THAddress(data);
 		double temperature = ParseUtils.parseTemperature(data);
 		double humidity = ParseUtils.parseS300THHumidity(data);
-		logger.debug("Received data '" + data + "' from device with address " + address + " : temperature: " + temperature
-				+ " humidity: " + humidity);
+		logger.debug("Received data '" + data + "' from device with address " + address + " : temperature: "
+				+ temperature + " humidity: " + humidity);
 
 		S300THBindingConfig temperatureConfig = findConfig(address, Datapoint.TEMPERATURE);
 		if (temperatureConfig != null) {
@@ -259,6 +156,60 @@ public class S300THBinding extends AbstractActiveBinding<S300THBindingProvider> 
 	@Override
 	public void error(Exception e) {
 		logger.error("Received error from CUL instead fo data", e);
+
+	}
+
+	@Override
+	protected Logger getLogger() {
+		return logger;
+	}
+
+	@Override
+	protected CULMode getCULMode() {
+		return CULMode.SLOW_RF;
+	}
+
+	@Override
+	protected void culOpen() {
+		// Ignore, we don't need to configure the CUL further
+
+	}
+
+	@Override
+	protected void parseMessage(String data) {
+		if (data.startsWith("K")) {
+			int firstByte = Integer.parseInt(data.substring(1, 2), 16);
+			int typByte = Integer.parseInt(data.substring(2, 3), 16) & 7;
+			int sfirstByte = firstByte & 7;
+
+			if (sfirstByte == 7) {
+				logger.debug("Received WS7000 message, but parsing for WS7000 is not implemented");
+				// TODO parse different sensors from WS7000 (?)
+			} else {
+				if (data.length() > 8 && data.length() < 13) {
+					// S300TH default size = 9 characters
+					parseS300THData(data);
+				} else if (data.length() > 14 && data.length() < 20) {
+					// KS300 default size = 15 characters.
+					// sometime we got values with more characters.
+					parseKS300Data(data);
+				} else {
+					logger.warn("Received unparseable message: " + data);
+				}
+			}
+		}
+
+	}
+
+	@Override
+	protected void parseConfig(Dictionary<String, ?> config) throws ConfigurationException {
+		// to override the default refresh interval one has to add a
+		// parameter to openhab.cfg like
+		// <bindingName>:refresh=<intervalInMs>
+		String refreshIntervalString = (String) config.get("refresh");
+		if (StringUtils.isNotBlank(refreshIntervalString)) {
+			refreshInterval = Long.parseLong(refreshIntervalString);
+		}
 
 	}
 

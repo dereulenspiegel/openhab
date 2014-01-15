@@ -21,20 +21,15 @@ import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.fht.FHTBindingConfig;
 import org.openhab.binding.fht.FHTBindingConfig.Datapoint;
 import org.openhab.binding.fht.FHTBindingProvider;
-import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.OpenClosedType;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
+import org.openhab.io.transport.cul.AbstractCULBinding;
 import org.openhab.io.transport.cul.CULCommunicationException;
-import org.openhab.io.transport.cul.CULDeviceException;
-import org.openhab.io.transport.cul.CULHandler;
-import org.openhab.io.transport.cul.CULListener;
-import org.openhab.io.transport.cul.CULManager;
 import org.openhab.io.transport.cul.CULMode;
 import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.cm.ManagedService;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.CronTrigger;
 import org.quartz.Job;
@@ -50,7 +45,6 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * Implements the connection to the FHT devices via CUL. Some commands aren't
  * send immediatley, but are queued and send in execute(). For every FHT-80b
@@ -60,16 +54,12 @@ import org.slf4j.LoggerFactory;
  * @author Till Klocke
  * @since 1.4.0
  */
-public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implements ManagedService, CULListener {
+public class FHTBinding extends AbstractCULBinding<FHTBindingProvider> {
 
 	private static final Logger logger = LoggerFactory.getLogger(FHTBinding.class);
 
 	private final static SimpleDateFormat configDateFormat = new SimpleDateFormat("mm:HH:dd:MM:yy");
 
-	/**
-	 * Config key for the device address. i.e. serial:/dev/ttyACM0
-	 */
-	private final static String KEY_DEVICE = "device";
 	/**
 	 * Our housecode we need to simulate a central device.
 	 */
@@ -91,15 +81,11 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 	 */
 	private final static String KEY_REPORTS_CRON = "reports.cron";
 
-	private String deviceName;
 	private String housecode;
 	private boolean doTimeUpdate = false;
 	private String timeUpdatecronExpression;
 	private String reportsCronExpression;
 	private boolean requestReports;
-
-	private CULManager culManager;
-	private CULHandler cul;
 
 	private JobKey updateTimeJobKey;
 	private JobKey requestReportJobKey;
@@ -116,49 +102,12 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 	public FHTBinding() {
 	}
 
-	public void activate() {
-		bindCULHandler();
-	}
-
-	public void deactivate() {
-		if (cul != null) {
-			culManager.close(cul);
-		}
-		unscheduleJob(requestReportJobKey);
-		unscheduleJob(updateTimeJobKey);
-	}
-
-	private void bindCULHandler() {
-		if (!StringUtils.isEmpty(deviceName)) {
-			try {
-				cul = culManager.getOpenCULHandler(deviceName, CULMode.SLOW_RF);
-				cul.registerListener(this);
-				cul.send("T01" + housecode);
-			} catch (CULDeviceException e) {
-				logger.error("Can't open CUL", e);
-			} catch (CULCommunicationException e) {
-				logger.error("Can't set our own housecode", e);
-			}
-		}
-	}
-
 	private boolean checkCULDevice() {
 		if (cul == null) {
 			logger.error("CUL device is not accessible");
 			return false;
 		}
 		return true;
-	}
-
-	private void setNewDeviceName(String newDeviceName) {
-		if (!StringUtils.isEmpty(newDeviceName)) {
-			if (cul != null) {
-				cul.unregisterListener(this);
-				culManager.close(cul);
-			}
-			deviceName = newDeviceName;
-			bindCULHandler();
-		}
 	}
 
 	/**
@@ -240,64 +189,6 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 		} else {
 			logger.error("The desired temperature is outside of the valid range");
 		}
-	}
-
-	/**
-	 * @{inheritDoc
-	 */
-	@Override
-	public void updated(Dictionary<String, ?> config) throws ConfigurationException {
-		if (config != null) {
-
-			// to override the default refresh interval one has to add a
-			// parameter to openhab.cfg like
-			// <bindingName>:refresh=<intervalInMs>
-			String refreshIntervalString = (String) config.get("refresh");
-			if (StringUtils.isNotBlank(refreshIntervalString)) {
-				refreshInterval = Long.parseLong(refreshIntervalString);
-			}
-
-			housecode = parseMandatoryValue(KEY_HOUSECODE, config);
-			doTimeUpdate = Boolean.parseBoolean((String) config.get(KEY_UPDATE_TIME));
-			if (doTimeUpdate) {
-				timeUpdatecronExpression = (String) config.get(KEY_UPDATE_CRON);
-				if (StringUtils.isEmpty(timeUpdatecronExpression)) {
-					setProperlyConfigured(false);
-					throw new ConfigurationException(KEY_UPDATE_CRON,
-							"Time update was configured but no cron expression");
-				}
-				updateTimeJobKey = scheduleJob(UpdateFHTTimeJob.class, timeUpdatecronExpression);
-			} else {
-				unscheduleJob(updateTimeJobKey);
-			}
-
-			requestReports = Boolean.parseBoolean((String) config.get(KEY_REPORTS));
-			if (requestReports) {
-				reportsCronExpression = (String) config.get(KEY_REPORTS_CRON);
-				if (StringUtils.isEmpty(reportsCronExpression)) {
-					setProperlyConfigured(false);
-					throw new ConfigurationException(KEY_REPORTS_CRON,
-							"Reports are requested, bu no cron expression is supplied");
-				}
-				requestReportJobKey = scheduleJob(RequestReportsJob.class, reportsCronExpression);
-			} else {
-				unscheduleJob(requestReportJobKey);
-			}
-
-			// At last the device, after we received all other config values
-			String deviceName = parseMandatoryValue(KEY_DEVICE, config);
-			setNewDeviceName(deviceName);
-			setProperlyConfigured(true);
-		}
-	}
-
-	private String parseMandatoryValue(String key, Dictionary<String, ?> config) throws ConfigurationException {
-		String value = (String) config.get(key);
-		if (StringUtils.isEmpty(value)) {
-			setProperlyConfigured(false);
-			throw new ConfigurationException(key, "Configuration option " + key + " is mandatory");
-		}
-		return value;
 	}
 
 	@Override
@@ -637,13 +528,67 @@ public class FHTBinding extends AbstractActiveBinding<FHTBindingProvider> implem
 		}
 
 	}
-	
-	public void setCULManager(CULManager manager){
-		this.culManager = manager;
+
+	@Override
+	protected Logger getLogger() {
+		return logger;
 	}
-	
-	public void unsetCULManager(CULManager manager){
-		this.culManager = null;
+
+	@Override
+	protected CULMode getCULMode() {
+		return CULMode.SLOW_RF;
+	}
+
+	@Override
+	protected void parseMessage(String data) {
+		if (data != null && data.startsWith("T")) {
+			handleFHTMessage(data);
+		}
+
+	}
+
+	@Override
+	protected void parseConfig(Dictionary<String, ?> config) throws ConfigurationException {
+		String refreshIntervalString = (String) config.get("refresh");
+		if (StringUtils.isNotBlank(refreshIntervalString)) {
+			refreshInterval = Long.parseLong(refreshIntervalString);
+		}
+
+		housecode = parseMandatoryValue(KEY_HOUSECODE, config);
+		doTimeUpdate = Boolean.parseBoolean((String) config.get(KEY_UPDATE_TIME));
+		if (doTimeUpdate) {
+			timeUpdatecronExpression = (String) config.get(KEY_UPDATE_CRON);
+			if (StringUtils.isEmpty(timeUpdatecronExpression)) {
+				setProperlyConfigured(false);
+				throw new ConfigurationException(KEY_UPDATE_CRON, "Time update was configured but no cron expression");
+			}
+			updateTimeJobKey = scheduleJob(UpdateFHTTimeJob.class, timeUpdatecronExpression);
+		} else {
+			unscheduleJob(updateTimeJobKey);
+		}
+
+		requestReports = Boolean.parseBoolean((String) config.get(KEY_REPORTS));
+		if (requestReports) {
+			reportsCronExpression = (String) config.get(KEY_REPORTS_CRON);
+			if (StringUtils.isEmpty(reportsCronExpression)) {
+				setProperlyConfigured(false);
+				throw new ConfigurationException(KEY_REPORTS_CRON,
+						"Reports are requested, bu no cron expression is supplied");
+			}
+			requestReportJobKey = scheduleJob(RequestReportsJob.class, reportsCronExpression);
+		} else {
+			unscheduleJob(requestReportJobKey);
+		}
+	}
+
+	@Override
+	protected void culOpen() {
+		try {
+			cul.send("T01" + housecode);
+		} catch (CULCommunicationException e) {
+			logger.error("Can't set housecode", e);
+		}
+
 	}
 
 }

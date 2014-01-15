@@ -16,18 +16,12 @@ import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.em.EMBindingProvider;
 import org.openhab.binding.em.internal.EMBindingConfig.Datapoint;
 import org.openhab.binding.em.internal.EMBindingConfig.EMType;
-import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.library.types.DecimalType;
-import org.openhab.io.transport.cul.CULDeviceException;
-import org.openhab.io.transport.cul.CULHandler;
-import org.openhab.io.transport.cul.CULListener;
-import org.openhab.io.transport.cul.CULManager;
+import org.openhab.io.transport.cul.AbstractCULBinding;
 import org.openhab.io.transport.cul.CULMode;
 import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Implement this class if you are going create an actively polling service like
@@ -36,56 +30,15 @@ import org.slf4j.LoggerFactory;
  * @author Till Klocke
  * @since 1.4.0
  */
-public class EMBinding extends AbstractActiveBinding<EMBindingProvider> implements ManagedService, CULListener {
+public class EMBinding extends AbstractCULBinding<EMBindingProvider> {
 
 	private static final Logger logger = LoggerFactory.getLogger(EMBinding.class);
 
-	private final static String CONFIG_KEY_DEVICE_NAME = "device";
 	private long refreshInterval = 60000;
-	private String deviceName;
-
-	private CULHandler cul;
 
 	private Map<String, Integer> counterMap = new HashMap<String, Integer>();
 
 	public EMBinding() {
-	}
-
-	public void activate() {
-	}
-
-	public void deactivate() {
-		closeCUL();
-	}
-
-	private void closeCUL() {
-		if (cul != null) {
-			cul.unregisterListener(this);
-			CULManager.close(cul);
-		}
-	}
-
-	/**
-	 * If the device name has changed, try to close the old device handler and
-	 * create a new one
-	 * 
-	 * @param deviceName
-	 *            The new deviceName
-	 */
-	private void setNewDeviceName(String deviceName) {
-		if (deviceName != null && this.deviceName != null && this.deviceName.equals(deviceName)) {
-			return;
-		}
-		if (this.deviceName != null && cul != null) {
-			closeCUL();
-		}
-		try {
-			cul = CULManager.getOpenCULHandler(deviceName, CULMode.SLOW_RF);
-			cul.registerListener(this);
-			this.deviceName = deviceName;
-		} catch (CULDeviceException e) {
-			logger.error("Can't get CULHandler", e);
-		}
 	}
 
 	/**
@@ -110,40 +63,6 @@ public class EMBinding extends AbstractActiveBinding<EMBindingProvider> implemen
 	@Override
 	protected void execute() {
 		// Nothing to do
-	}
-
-	/**
-	 * @{inheritDoc
-	 */
-	@Override
-	public void updated(Dictionary<String, ?> config) throws ConfigurationException {
-		if (config != null) {
-
-			// to override the default refresh interval one has to add a
-			// parameter to openhab.cfg like
-			// <bindingName>:refresh=<intervalInMs>
-			String refreshIntervalString = (String) config.get("refresh");
-			if (StringUtils.isNotBlank(refreshIntervalString)) {
-				refreshInterval = Long.parseLong(refreshIntervalString);
-			}
-
-			String deviceName = (String) config.get(CONFIG_KEY_DEVICE_NAME);
-			if (!StringUtils.isEmpty(deviceName)) {
-				setNewDeviceName(deviceName);
-			} else {
-				setProperlyConfigured(false);
-				throw new ConfigurationException(CONFIG_KEY_DEVICE_NAME, "Device name not configured");
-			}
-			setProperlyConfigured(true);
-		}
-	}
-
-	@Override
-	public void dataReceived(String data) {
-		if (!StringUtils.isEmpty(data) && data.startsWith("E")) {
-			parseDataLine(data);
-		}
-
 	}
 
 	/**
@@ -218,6 +137,39 @@ public class EMBinding extends AbstractActiveBinding<EMBindingProvider> implemen
 	@Override
 	public void error(Exception e) {
 		logger.error("Exception instead of new data from CUL", e);
+
+	}
+
+	@Override
+	protected Logger getLogger() {
+		return logger;
+	}
+
+	@Override
+	protected CULMode getCULMode() {
+		return CULMode.SLOW_RF;
+	}
+
+	@Override
+	protected void culOpen() {
+		// Ignore, we don't need to do anything after the CUL device is open
+
+	}
+
+	@Override
+	protected void parseMessage(String data) {
+		if (!StringUtils.isEmpty(data) && data.startsWith("E")) {
+			parseDataLine(data);
+		}
+
+	}
+
+	@Override
+	protected void parseConfig(Dictionary<String, ?> config) throws ConfigurationException {
+		String refreshIntervalString = (String) config.get("refresh");
+		if (StringUtils.isNotBlank(refreshIntervalString)) {
+			refreshInterval = Long.parseLong(refreshIntervalString);
+		}
 
 	}
 
