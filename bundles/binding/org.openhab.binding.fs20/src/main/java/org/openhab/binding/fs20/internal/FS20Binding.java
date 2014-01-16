@@ -81,6 +81,10 @@ public class FS20Binding extends AbstractCULBinding<FS20BindingProvider> {
 			logger.debug("Received command " + command.toString() + " for item " + itemName);
 			try {
 				FS20Command fs20Command = FS20CommandHelper.convertHABCommandToFS20Command(command);
+				if (fs20Command == null) {
+					logger.error("Couldn't convert openHAB command " + command.format("%s") + " to FS20 command");
+					return;
+				}
 				cul.send("F" + bindingConfig.getAddress() + fs20Command.getHexValue());
 			} catch (CULCommunicationException e) {
 				logger.error("An exception occured while sending a command", e);
