@@ -10,6 +10,9 @@ import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
 
 /**
+ * Base class for all CUL based bindings. This class handles some of the ground
+ * work like managing the connection to the CUL device and parsing the device
+ * address from the configuration dictionary.
  * 
  * @author Till Klocke
  * @since 1.5.0
@@ -22,9 +25,20 @@ public abstract class AbstractCULBinding<T extends BindingProvider> extends Abst
 
 	private final static String KEY_DEVICE = "device";
 
+	/**
+	 * The injected {@link CULManager} used to to open and close the CUL device.
+	 */
 	protected CULManager culManager;
+	/**
+	 * The {@link CULHandler}. Bindings must provide a valid {@link CULMode}.
+	 * The device address is parsed automatically from the configuration
+	 * dictionary.
+	 */
 	protected CULHandler cul;
 
+	/**
+	 * The parsed device address.
+	 */
 	protected String deviceAddress;
 
 	@Override
@@ -39,10 +53,12 @@ public abstract class AbstractCULBinding<T extends BindingProvider> extends Abst
 	}
 
 	public void setCULManager(CULManager manager) {
+		getLogger().debug("Received CULManager");
 		this.culManager = manager;
 	}
 
 	public void unsetCULManager(CULManager manager) {
+		getLogger().debug("Lost CULManager");
 		this.culManager = null;
 	}
 
@@ -53,10 +69,8 @@ public abstract class AbstractCULBinding<T extends BindingProvider> extends Abst
 	 * @param mode
 	 * @throws CULDeviceException
 	 */
-	protected void openCUL(String address, CULMode mode) throws CULDeviceException {
-		if (cul != null) {
-			culManager.close(cul);
-		}
+	private void openCUL(String address, CULMode mode) throws CULDeviceException {
+		getLogger().debug("Opening CUL device with address " + address + " in mode " + mode.toString());
 		cul = culManager.getOpenCULHandler(address, mode);
 		cul.registerListener(this);
 	}
@@ -99,8 +113,10 @@ public abstract class AbstractCULBinding<T extends BindingProvider> extends Abst
 	protected abstract void culOpen();
 
 	protected void closeCUL() {
-		cul.unregisterListener(this);
-		culManager.close(cul);
+		if (cul != null) {
+			cul.unregisterListener(this);
+			culManager.close(cul);
+		}
 	}
 
 	/**
