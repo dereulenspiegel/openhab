@@ -27,5 +27,6 @@
 	<reference bind="addBindingProvider" cardinality="1..n"
 		interface="org.openhab.binding.intertechno.CULIntertechnoBindingProvider" name="CULIntertechnoBindingProvider"
 		policy="dynamic" unbind="removeBindingProvider" />
+ <reference bind="setCULManager" cardinality="1..n" interface="org.openhab.io.transport.cul.CULManager" name="CULManager" policy="dynamic" unbind="unsetCULManager"/>
 	
 </scr:component>
