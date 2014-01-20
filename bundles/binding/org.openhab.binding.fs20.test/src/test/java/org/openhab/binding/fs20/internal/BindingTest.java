@@ -1,16 +1,12 @@
-package org.openhab.binding.em.internal;
+package org.openhab.binding.fs20.internal;
 
-import java.math.BigDecimal;
 import java.util.Dictionary;
 import java.util.Hashtable;
-
-import javax.sound.midi.Receiver;
 
 import junit.framework.Assert;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.openhab.binding.em.internal.MockEventPublisher.Tupel;
 import org.openhab.binding.fs20.internal.FS20Binding;
 import org.openhab.binding.fs20.internal.FS20Command;
 import org.openhab.binding.fs20.internal.FS20GenericBindingProvider;
@@ -20,7 +16,10 @@ import org.openhab.core.library.items.SwitchItem;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.PercentType;
-import org.openhab.io.transport.cul.CULHandler;
+import org.openhab.io.transport.cul.mocks.MockCULHandler;
+import org.openhab.io.transport.cul.mocks.MockCULManager;
+import org.openhab.io.transport.cul.mocks.MockEventPublisher;
+import org.openhab.io.transport.cul.mocks.MockEventPublisher.Tupel;
 
 public class BindingTest {
 

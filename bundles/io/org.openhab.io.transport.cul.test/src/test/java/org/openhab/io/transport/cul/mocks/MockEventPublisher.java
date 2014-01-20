@@ -1,4 +1,4 @@
-package org.openhab.binding.em.internal;
+package org.openhab.io.transport.cul.mocks;
 
 import java.util.ArrayList;
 import java.util.List;

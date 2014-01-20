@@ -1,4 +1,4 @@
-package org.openhab.binding.em.internal;
+package org.openhab.binding.fs20.internal;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -1,4 +1,4 @@
-package org.openhab.binding.em.internal;
+package org.openhab.io.transport.cul.mocks;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +44,17 @@ public class MockCULHandler implements CULHandler {
 
 	public List<String> getSendCommands() {
 		return sendCommands;
+	}
+
+	public void clear() {
+		sendCommands.clear();
+	}
+
+	public String getLastSendCommand() {
+		if (sendCommands.size() > 0) {
+			return sendCommands.get(0);
+		}
+		return null;
 	}
 
 }

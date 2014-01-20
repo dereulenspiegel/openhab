@@ -1,4 +1,4 @@
-package org.openhab.binding.em.internal;
+package org.openhab.io.transport.cul.mocks;
 
 import org.openhab.io.transport.cul.CULDeviceException;
 import org.openhab.io.transport.cul.CULHandler;
