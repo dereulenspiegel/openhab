@@ -8,6 +8,7 @@
  */
 package org.openhab.binding.em.internal;
 
+import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.em.EMBindingProvider;
 import org.openhab.binding.em.internal.EMBindingConfig.Datapoint;
 import org.openhab.binding.em.internal.EMBindingConfig.EMType;
@@ -33,7 +34,7 @@ public class EMGenericBindingProvider extends AbstractGenericBindingProvider imp
 	}
 
 	/**
-	 * @{inheritDoc}
+	 * @{inheritDoc
 	 */
 	@Override
 	public void validateItemType(Item item, String bindingConfig) throws BindingConfigParseException {
@@ -67,12 +68,30 @@ public class EMGenericBindingProvider extends AbstractGenericBindingProvider imp
 			} else if ("datapoint".equals(keyValue[0])) {
 				datapoint = Datapoint.valueOf(keyValue[1]);
 			} else if ("correctionFactor".equals(keyValue[0])) {
-				correctionFactor = Double.parseDouble(keyValue[1]);
+				try {
+					correctionFactor = Double.parseDouble(keyValue[1]);
+				} catch (NumberFormatException e) {
+					throw new BindingConfigParseException("Correction factor can't be parsed to a number");
+				}
 			}
 		}
+		validateBindingConfig(type, address, datapoint);
 		EMBindingConfig config = new EMBindingConfig(type, address, datapoint, item, correctionFactor);
 
 		addBindingConfig(item, config);
+	}
+
+	private void validateBindingConfig(EMType type, String address, Datapoint datapoint)
+			throws BindingConfigParseException {
+		if (type == null || datapoint == null) {
+			throw new BindingConfigParseException("Either EMType or Datapoint can't be parsed");
+		}
+		if (StringUtils.isEmpty(address)) {
+			throw new BindingConfigParseException("The address is not set");
+		}
+		if (address.length() != 2) {
+			throw new BindingConfigParseException("The address must be a 2 character long");
+		}
 	}
 
 	@Override
