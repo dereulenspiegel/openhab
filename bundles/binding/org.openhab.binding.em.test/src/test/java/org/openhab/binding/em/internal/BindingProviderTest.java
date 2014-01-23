@@ -34,6 +34,12 @@ public class BindingProviderTest {
 		String itemConfig = "type=04|address=BC|datapoint=LAST_VALUE;correctionFactor=400";
 		processBindingConfig(itemConfig);
 	}
+	
+	@Test(expected=BindingConfigParseException.class)
+	public void testAddressTooLong() throws Exception {
+		String itemConfig = "type=04|address=BCA|datapoint=LAST_VALUE;correctionFactor=400";
+		processBindingConfig(itemConfig);
+	}
 
 	private void processBindingConfig(String itemConfig) throws Exception {
 		Item emItem = new NumberItem("emItem");

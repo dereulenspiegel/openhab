@@ -52,7 +52,7 @@ public class MockCULHandler implements CULHandler {
 
 	public String getLastSendCommand() {
 		if (sendCommands.size() > 0) {
-			return sendCommands.get(0);
+			return sendCommands.get(sendCommands.size() - 1);
 		}
 		return null;
 	}

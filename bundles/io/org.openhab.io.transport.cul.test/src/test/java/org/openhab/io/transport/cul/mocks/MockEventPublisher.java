@@ -3,6 +3,8 @@ package org.openhab.io.transport.cul.mocks;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.crypto.spec.PSource;
+
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -51,12 +53,33 @@ public class MockEventPublisher implements EventPublisher {
 		return sendCommands;
 	}
 
+	public Tupel getLastSendCommand() {
+		if (sendCommands.size() > 0) {
+			return sendCommands.get(sendCommands.size() - 1);
+		}
+		return null;
+	}
+
 	public List<Tupel> getPostedCommands() {
 		return postedCommands;
 	}
 
+	public Tupel getLastPostedCommand() {
+		if (postedCommands.size() > 0) {
+			return postedCommands.get(postedCommands.size() - 1);
+		}
+		return null;
+	}
+
 	public List<Tupel> getPostedUpdates() {
 		return postedUpdates;
+	}
+
+	public Tupel getLastPostedUpdate() {
+		if (postedUpdates.size() > 0) {
+			return postedUpdates.get(postedUpdates.size() - 1);
+		}
+		return null;
 	}
 
 }
