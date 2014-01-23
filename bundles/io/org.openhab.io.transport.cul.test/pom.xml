@@ -13,7 +13,7 @@
   </properties>
 
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.openhab.binding</groupId>
+  <groupId>org.openhab.io</groupId>
   <artifactId>org.openhab.io.transport.cul.test</artifactId>
 
   <name>openHAB CUL transport Tests</name>
