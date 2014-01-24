@@ -6,7 +6,6 @@ import java.util.Hashtable;
 import junit.framework.Assert;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openhab.binding.em.internal.EMBindingConfig.Datapoint;
 import org.openhab.binding.em.internal.EMBindingConfig.EMType;
@@ -63,7 +62,6 @@ public class BindingTest {
 	}
 
 	@Test
-	@Ignore
 	public void testReceiveValues() throws Exception {
 		int addressValue = 16;
 		String address = Integer.toHexString(addressValue);
@@ -75,19 +73,45 @@ public class BindingTest {
 			eventPublisher.clear();
 			addressValue += 1;
 			address = Integer.toHexString(addressValue);
+			packetCounter += 1;
+			String counter = Integer.toHexString(packetCounter);
+			String data = "E" + type.getTypeValue() + address + counter + cumulatedValue + currentValue + peakValue;
+			culHandler.simulateReceivedCommand(data);
 			for (Datapoint datapoint : Datapoint.values()) {
-				packetCounter += 1;
-				String counter = Integer.toHexString(packetCounter);
-				String data = "E" + type.getTypeValue() + address + counter + cumulatedValue + currentValue + peakValue;
-				culHandler.simulateReceivedCommand(data);
 				EMBindingConfig bindingConfig = provider
 						.getConfigByTypeAndAddressAndDatapoint(type, address, datapoint);
 				Assert.assertNotNull(bindingConfig);
-				Tupel tupel = eventPublisher.getLastPostedUpdate();
-				Assert.assertNotNull(tupel);
-				Assert.assertEquals(bindingConfig.getItem().getName(), tupel.itemName);
+				String expectedValue = null;
+				switch (datapoint) {
+				case CUMULATED_VALUE:
+					expectedValue = "03E8";
+					break;
+				case LAST_VALUE:
+					expectedValue = "03E9";
+					break;
+				case TOP_VALUE:
+					expectedValue = "03EA";
+					break;
+				}
+				doesEventPublisherContainsUpdate(bindingConfig.getItem().getName(), expectedValue);
 			}
 		}
+	}
+
+	private void doesEventPublisherContainsUpdate(String itemName, String expectedValue) {
+		int intValue = Integer.parseInt(expectedValue, 16) * 400;
+		for (Tupel t : eventPublisher.getPostedUpdates()) {
+			if (t.itemName.equals(itemName)) {
+				DecimalType state = (DecimalType) t.type;
+				if (state.compareTo(new DecimalType(intValue)) == 0) {
+					return;
+				} else {
+					Assert.fail("Received value doesn't match expected value, item: " + itemName + " expected value "
+							+ intValue);
+				}
+			}
+		}
+		Assert.fail();
 	}
 
 }
