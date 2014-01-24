@@ -14,7 +14,7 @@ import org.openhab.binding.em.internal.EMBindingConfig.EMType;
  */
 public class ParsingUtilsTest {
 
-	private static String[] EM_DATA = { "E0205BFCB0402000300F7", "E0205C0CD0402000300FA", "E0205C4D5040200030004" };
+	private static String[] EM_DATA = { "E0205BFCB0402000300F7", "E0105C0CD0402000300FA", "E0305C4D5040200030004" };
 
 	@Test
 	public void testParsingEMData() throws Exception {
@@ -24,6 +24,12 @@ public class ParsingUtilsTest {
 
 		EMType type = ParsingUtils.parseType(EM_DATA[0]);
 		Assert.assertEquals(EMType.EM100EM, type);
+		
+		type = ParsingUtils.parseType(EM_DATA[1]);
+		Assert.assertEquals(EMType.EM1000S, type);
+		
+		type = ParsingUtils.parseType(EM_DATA[2]);
+		Assert.assertEquals(EMType.EM1000GZ, type);
 
 		int cumulatedValue = ParsingUtils.parseCumulatedValue(EM_DATA[0]);
 		Assert.assertEquals(1227, cumulatedValue);
