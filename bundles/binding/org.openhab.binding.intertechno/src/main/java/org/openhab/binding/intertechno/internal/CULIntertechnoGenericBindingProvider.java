@@ -54,8 +54,7 @@ public class CULIntertechnoGenericBindingProvider extends
 
 	/**
 	 * config of style
-	 * <code>{{@literal intertechno="type=<classic|fls|rev>;group=<group>;address=<address>"}}</code><br>
-	 * 
+	 * {intertechno="type=<classic|fls|rev>;group=<group>;address=<address>"}
 	 * {@inheritDoc}
 	 */
 	@Override
