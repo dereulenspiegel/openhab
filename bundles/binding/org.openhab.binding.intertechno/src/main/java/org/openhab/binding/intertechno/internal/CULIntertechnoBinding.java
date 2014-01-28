@@ -13,26 +13,38 @@ import java.util.Dictionary;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.intertechno.CULIntertechnoBindingProvider;
 import org.openhab.binding.intertechno.IntertechnoBindingConfig;
+import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.types.Command;
-import org.openhab.io.transport.cul.AbstractCULBinding;
 import org.openhab.io.transport.cul.CULCommunicationException;
+import org.openhab.io.transport.cul.CULDeviceException;
 import org.openhab.io.transport.cul.CULHandler;
+import org.openhab.io.transport.cul.CULManager;
 import org.openhab.io.transport.cul.CULMode;
 import org.osgi.service.cm.ConfigurationException;
+import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /**
- * Implements the communcation with Intertechno devices via CUL devices.
+ * Implements the communication with Intertechno devices via CUL devices.
  * Currently it is only possible to send commands.
  * 
  * @author Till Klocke
  * @since 1.4.0
  */
-public class CULIntertechnoBinding extends AbstractCULBinding<CULIntertechnoBindingProvider> {
+public class CULIntertechnoBinding extends
+		AbstractActiveBinding<CULIntertechnoBindingProvider> implements
+		ManagedService {
 
-	private static final Logger logger = LoggerFactory.getLogger(CULIntertechnoBinding.class);
+	private static final Logger logger = LoggerFactory
+			.getLogger(CULIntertechnoBinding.class);
+
+	/**
+	 * Which CUL device should we use, i.e. serial:/dev/tyyACM0
+	 */
+	private final static String KEY_DEVICE_NAME = "device";
 
 	/**
 	 * How often should the command be repeated? See <a
@@ -46,7 +58,10 @@ public class CULIntertechnoBinding extends AbstractCULBinding<CULIntertechnoBind
 	 * details.
 	 */
 	private final static String KEY_WAVE_LENGTH = "wavelength";
-	
+
+	private CULHandler cul;
+
+	private String deviceName;
 	private int repititions = 6;
 	private int wavelength = 420;
 
@@ -57,6 +72,41 @@ public class CULIntertechnoBinding extends AbstractCULBinding<CULIntertechnoBind
 	private long refreshInterval = 60000;
 
 	public CULIntertechnoBinding() {
+	}
+
+	public void activate() {
+		bindCULHandler();
+	}
+
+	public void deactivate() {
+		if (cul != null) {
+			CULManager.close(cul);
+		}
+	}
+
+	private void setNewDeviceName(String newDeviceName) {
+		if (!StringUtils.isEmpty(newDeviceName)
+				&& !newDeviceName.equals(deviceName)) {
+			if (cul != null) {
+				CULManager.close(cul);
+			}
+			deviceName = newDeviceName;
+			bindCULHandler();
+		}
+	}
+
+	private void bindCULHandler() {
+		if (!StringUtils.isEmpty(deviceName)) {
+			try {
+				cul = CULManager.getOpenCULHandler(deviceName, CULMode.SLOW_RF);
+				cul.send("it" + wavelength);
+				cul.send("isr" + repititions);
+			} catch (CULDeviceException e) {
+				logger.error("Can't open CUL", e);
+			} catch (CULCommunicationException e) {
+				logger.error("Can't set intertechno parameters", e);
+			}
+		}
 	}
 
 	/**
@@ -114,13 +164,56 @@ public class CULIntertechnoBinding extends AbstractCULBinding<CULIntertechnoBind
 					logger.error("Can't write to CUL", e);
 				}
 			} else {
-				logger.error("Can't determine value to send for command " + command.toString());
+				logger.error("Can't determine value to send for command "
+						+ command.toString());
 			}
 		}
 	}
 
-	private Integer parseOptionalNumericParameter(String key, Dictionary<String, ?> config)
+	/**
+	 * @{inheritDoc
+	 */
+	@Override
+	public void updated(Dictionary<String, ?> config)
 			throws ConfigurationException {
+		if (config != null) {
+
+			// to override the default refresh interval one has to add a
+			// parameter to openhab.cfg like
+			// <bindingName>:refresh=<intervalInMs>
+			String refreshIntervalString = (String) config.get("refresh");
+			if (StringUtils.isNotBlank(refreshIntervalString)) {
+				refreshInterval = Long.parseLong(refreshIntervalString);
+			}
+
+			Integer repititions = parseOptionalNumericParameter(KEY_REPITIONS,
+					config);
+			if (repititions != null) {
+				this.repititions = repititions.intValue();
+			}
+
+			Integer wavelength = parseOptionalNumericParameter(KEY_WAVE_LENGTH,
+					config);
+			if (wavelength != null) {
+				this.wavelength = wavelength.intValue();
+			}
+
+			// Parse device last, so we already know all relevant parameter
+			String deviceName = (String) config.get(KEY_DEVICE_NAME);
+			if (StringUtils.isEmpty(deviceName)) {
+				setProperlyConfigured(false);
+				throw new ConfigurationException(KEY_DEVICE_NAME,
+						"The device mustn't be empty");
+			} else {
+				setNewDeviceName(deviceName);
+			}
+
+			setProperlyConfigured(true);
+		}
+	}
+
+	private Integer parseOptionalNumericParameter(String key,
+			Dictionary<String, ?> config) throws ConfigurationException {
 		String valueString = (String) config.get(key);
 		int value = 0;
 		if (!StringUtils.isEmpty(valueString)) {
@@ -133,60 +226,6 @@ public class CULIntertechnoBinding extends AbstractCULBinding<CULIntertechnoBind
 			}
 		}
 		return null;
-	}
-
-	@Override
-	public void error(Exception e) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	protected Logger getLogger() {
-		return logger;
-	}
-
-	@Override
-	protected CULMode getCULMode() {
-		return CULMode.SLOW_RF;
-	}
-
-	@Override
-	protected void culOpen() {
-		try {
-			cul.send("it" + wavelength);
-			cul.send("isr" + repititions);
-		} catch (CULCommunicationException e) {
-			logger.error("Can't set Intertechno parameters", e);
-		}
-	}
-
-	@Override
-	protected void parseMessage(String data) {
-		// We don't receive any Intertechno messages
-
-	}
-
-	@Override
-	protected void parseConfig(Dictionary<String, ?> config) throws ConfigurationException {
-		// to override the default refresh interval one has to add a
-		// parameter to openhab.cfg like
-		// <bindingName>:refresh=<intervalInMs>
-		String refreshIntervalString = (String) config.get("refresh");
-		if (StringUtils.isNotBlank(refreshIntervalString)) {
-			refreshInterval = Long.parseLong(refreshIntervalString);
-		}
-
-		Integer repititions = parseOptionalNumericParameter(KEY_REPITIONS, config);
-		if (repititions != null) {
-			this.repititions = repititions.intValue();
-		}
-
-		Integer wavelength = parseOptionalNumericParameter(KEY_WAVE_LENGTH, config);
-		if (wavelength != null) {
-			this.wavelength = wavelength.intValue();
-		}
-
 	}
 
 }
