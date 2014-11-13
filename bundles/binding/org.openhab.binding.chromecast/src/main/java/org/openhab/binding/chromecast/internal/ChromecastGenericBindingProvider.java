@@ -104,8 +104,7 @@ public class ChromecastGenericBindingProvider extends
 
 	@Override
 	public ChromecastBindingConfig getBindingConfigFor(Item item) {
-		return (ChromecastBindingConfig) this.bindingConfigs
-				.get(item.getName());
+		return getBindingConfigFor(item.getName());
 	}
 
 	@Override
@@ -118,6 +117,11 @@ public class ChromecastGenericBindingProvider extends
 			}
 		}
 		return result;
+	}
+
+	@Override
+	public ChromecastBindingConfig getBindingConfigFor(String itemName) {
+		return (ChromecastBindingConfig) this.bindingConfigs.get(itemName);
 	}
 
 }

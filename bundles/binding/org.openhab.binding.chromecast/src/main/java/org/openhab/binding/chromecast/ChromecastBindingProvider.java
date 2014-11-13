@@ -25,6 +25,8 @@ public interface ChromecastBindingProvider extends BindingProvider {
 	
 	public ChromecastBindingConfig getBindingConfigFor(Item item);
 	
+	public ChromecastBindingConfig getBindingConfigFor(String itemName);
+	
 	public List<ChromecastBindingConfig> getBindingConfigsFor(String deviceName);
 
 }
