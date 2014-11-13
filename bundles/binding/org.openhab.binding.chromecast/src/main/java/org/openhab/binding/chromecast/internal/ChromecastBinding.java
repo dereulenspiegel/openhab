@@ -54,7 +54,7 @@ public class ChromecastBinding extends
 	}
 
 	public void deactivate() {
-
+		chromecastHandler.stopDiscovery();
 	}
 
 	/**

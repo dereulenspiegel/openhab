@@ -2,6 +2,7 @@ package org.openhab.binding.chromecast.internal;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.security.GeneralSecurityException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,16 @@ public class ChromecastHandler {
 		}
 	}
 
+	public void stopDiscovery() {
+		try {
+			ChromeCasts.stopDiscovery();
+		} catch (IOException e) {
+			logger.error(
+					"Error while stopping discovery of Chromecast devices, but this probably doesn't matter",
+					e);
+		}
+	}
+
 	public void update() {
 
 		Iterator<ChromeCast> deviceIterator = ChromeCasts.get().iterator();
@@ -57,8 +68,19 @@ public class ChromecastHandler {
 			if (!deviceMap.containsKey(device.getName())) {
 				logger.debug("Discovered new Chromecast with the name "
 						+ device.getName());
-				deviceMap.put(device.getName(), device);
-				updateStatusItems(device);
+				try {
+					device.connect();
+					deviceMap.put(device.getName(), device);
+					updateStatusItems(device);
+				} catch (IOException e1) {
+					logger.error(
+							"Can't connect to Chromecast device "
+									+ device.getName(), e1);
+				} catch (GeneralSecurityException e1) {
+					logger.error(
+							"Security exception while connecting to Chromecast device "
+									+ device.getName(), e1);
+				}
 			} else {
 				logger.debug("Updating status of already discovered device");
 				updateStatusItems(device);
@@ -68,6 +90,7 @@ public class ChromecastHandler {
 	}
 
 	protected void updateStatusItems(ChromeCast device) {
+
 		List<ChromecastBindingConfig> bindingConfigs = bindingProvider
 				.getBindingConfigsFor(device.getName());
 		if (bindingConfigs.size() == 0) {
@@ -75,67 +98,107 @@ public class ChromecastHandler {
 		}
 		try {
 			MediaStatus mediaStatus = device.getMediaStatus();
-			MediaStatus.PlayerState playerState = mediaStatus.playerState;
+			MediaStatus.PlayerState playerState = null;
+			if (mediaStatus != null) {
+				playerState = mediaStatus.playerState;
+			}
 			Status deviceStatus = device.getStatus();
 
 			for (ChromecastBindingConfig config : bindingConfigs) {
 				State update = null;
 				switch (config.property) {
 				case PLAY:
-					update = (playerState == PlayerState.PLAYING) ? OnOffType.ON
-							: OnOffType.OFF;
+					if (playerState == null) {
+						update = OnOffType.OFF;
+					} else {
+						update = (playerState == PlayerState.PLAYING) ? OnOffType.ON
+								: OnOffType.OFF;
+					}
 					break;
 
 				case PAUSE:
-					update = (playerState == PlayerState.PAUSED) ? OnOffType.ON
-							: OnOffType.OFF;
+					if (playerState == null) {
+						update = OnOffType.OFF;
+					} else {
+						update = (playerState == PlayerState.PAUSED) ? OnOffType.ON
+								: OnOffType.OFF;
+					}
 					break;
 
 				case IDLE:
-					update = (playerState == PlayerState.IDLE) ? OnOffType.ON
-							: OnOffType.OFF;
+					if (playerState == null) {
+						update = OnOffType.OFF;
+					} else {
+						update = (playerState == PlayerState.IDLE) ? OnOffType.ON
+								: OnOffType.OFF;
+					}
 					break;
 
 				case BUFFERING:
-					update = (playerState == PlayerState.BUFFERING) ? OnOffType.ON
-							: OnOffType.OFF;
+					if (playerState == null) {
+						update = OnOffType.OFF;
+					} else {
+						update = (playerState == PlayerState.BUFFERING) ? OnOffType.ON
+								: OnOffType.OFF;
+					}
 					break;
 
 				case VOLUME:
-					// TODO Determine how volume is formatted
-					float volume = deviceStatus.volume.level;
-					update = new DecimalType(volume * 100);
+					if (deviceStatus == null) {
+						update = null;
+						// FIXME: Find or define UnDef state
+					} else {
+						// TODO Determine how volume is formatted
+						float volume = deviceStatus.volume.level;
+						update = new DecimalType(volume * 100);
+					}
 					break;
 
 				case APP_ID:
-					update = new StringType(deviceStatus.getRunningApp().id);
+					if (deviceStatus != null) {
+						update = new StringType(deviceStatus.getRunningApp().id);
+					}
 					break;
 
 				case APP_NAME:
-					update = new StringType(deviceStatus.getRunningApp().name);
+					if (deviceStatus != null) {
+						update = new StringType(
+								deviceStatus.getRunningApp().name);
+					}
 					break;
 
 				case DURATION:
 					// Check if this is really curerent time in percent
-					float percent = mediaStatus.currentTime;
-					update = new PercentType(new BigDecimal(percent));
+					if (mediaStatus != null) {
+						float percent = mediaStatus.currentTime;
+						update = new PercentType(new BigDecimal(percent));
+					}
 					break;
 
 				case STREAM_TYPE:
-					update = new StringType(mediaStatus.media.streamType);
+					if (mediaStatus != null) {
+						update = new StringType(mediaStatus.media.streamType);
+					}
 					break;
 
 				case CONTENT_TYPE:
-					update = new StringType(mediaStatus.media.contentType);
+					if (mediaStatus != null) {
+						update = new StringType(mediaStatus.media.contentType);
+					}
 					break;
 
 				case URL:
-					update = new StringType(mediaStatus.media.url);
+					if (mediaStatus != null) {
+						update = new StringType(mediaStatus.media.url);
+					}
 					break;
 
 				case IS_ACTIVE_INPUT:
-					update = deviceStatus.activeInput ? OnOffType.ON
-							: OnOffType.OFF;
+					if (deviceStatus != null) {
+						update = deviceStatus.activeInput ? OnOffType.ON
+								: OnOffType.OFF;
+						break;
+					}
 
 				default:
 					update = null;
