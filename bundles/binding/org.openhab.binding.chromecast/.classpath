@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" output="target/classes" path="src/main/java"/>
 	<classpathentry excluding="**" kind="src" output="target/classes" path="src/main/resources"/>
+	<classpathentry exported="true" kind="lib" path="libs/protobuf-java-2.6.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="libs/jmdns-3.4.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="libs/api-v2-0.0.4-SNAPSHOT.jar"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>

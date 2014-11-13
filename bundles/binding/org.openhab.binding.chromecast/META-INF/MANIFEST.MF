@@ -34,4 +34,5 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Service-Component: OSGI-INF/binding.xml, OSGI-INF/genericbindingprovider.xml
 Bundle-ClassPath: .,
  libs/api-v2-0.0.4-SNAPSHOT.jar,
- libs/jmdns-3.4.1.jar
+ libs/jmdns-3.4.1.jar,
+ libs/protobuf-java-2.6.1.jar
