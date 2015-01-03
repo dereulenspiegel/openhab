@@ -8,6 +8,8 @@
  */
 package org.openhab.binding.arduinojunkers;
 
+import java.util.List;
+
 import org.openhab.binding.arduinojunkers.internal.ArduinoJunkersBindingConfig;
 import org.openhab.core.binding.BindingProvider;
 
@@ -18,5 +20,11 @@ import org.openhab.core.binding.BindingProvider;
 public interface ArduinoJunkersBindingProvider extends BindingProvider {
 	
 	public ArduinoJunkersBindingConfig getConfigForItem(String itemName);
+	
+	public ArduinoJunkersBindingConfig getTempItemForDevice(ArduinoJunkersBindingConfig config);
+	
+	public List<ArduinoJunkersBindingConfig> getAllConfigs();
+	
+	public List<ArduinoJunkersBindingConfig> getAllTempConfigs();
 
 }

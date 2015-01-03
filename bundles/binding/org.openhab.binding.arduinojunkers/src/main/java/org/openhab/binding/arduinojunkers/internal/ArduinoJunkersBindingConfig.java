@@ -7,6 +7,11 @@ public class ArduinoJunkersBindingConfig implements BindingConfig {
 		SERIAL,UDP;
 	}
 	
+	public enum ItemType {
+		SET_PERCENT,TEMP;
+	}
+	public ItemType itemType;
+	
 	public ConnectionType connectionType;
 	
 	public String serialPort;
