@@ -74,6 +74,7 @@ public class ArduinoJunkersGenericBindingProvider extends
 			}
 			config.serialPort = serialPort;
 			config.itemType = type;
+			config.itemName = item.getName();
 		}
 
 		addBindingConfig(item, config);

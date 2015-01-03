@@ -15,4 +15,6 @@ public class ArduinoJunkersBindingConfig implements BindingConfig {
 	public ConnectionType connectionType;
 	
 	public String serialPort;
+	
+	public String itemName;
 }

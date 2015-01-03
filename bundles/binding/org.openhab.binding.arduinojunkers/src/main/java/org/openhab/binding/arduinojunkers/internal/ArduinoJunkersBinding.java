@@ -9,12 +9,15 @@
 package org.openhab.binding.arduinojunkers.internal;
 
 import java.util.Dictionary;
+import java.util.List;
 
 import org.openhab.binding.arduinojunkers.ArduinoJunkersBindingProvider;
 import org.openhab.binding.arduinojunkers.internal.ArduinoJunkersBindingConfig.ConnectionType;
+import org.openhab.binding.arduinojunkers.internal.ConnectionBackend.TempListener;
 
 import org.apache.commons.lang.StringUtils;
 import org.openhab.core.binding.AbstractActiveBinding;
+import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.PercentType;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -79,8 +82,19 @@ public class ArduinoJunkersBinding extends
 	 */
 	@Override
 	protected void execute() {
-		// the frequently executed code (polling) goes here ...
-		logger.debug("execute() method is called!");
+		List<ArduinoJunkersBindingConfig> tempConfigs = providers.iterator()
+				.next().getAllTempConfigs();
+		for (final ArduinoJunkersBindingConfig config : tempConfigs) {
+			ConnectionBackend backend = getBackend(config);
+			backend.requestTemperature(config, new TempListener() {
+				@Override
+				public void tempReceived(float temp) {
+					DecimalType update = new DecimalType(temp);
+					eventPublisher.postUpdate(config.itemName, update);
+
+				}
+			});
+		}
 	}
 
 	/**
@@ -102,8 +116,7 @@ public class ArduinoJunkersBinding extends
 		}
 		ConnectionBackend backend = getBackend(config);
 		PercentType type = (PercentType) command;
-		logger.debug("Setting value {} for item {}", type.intValue(),
-				itemName);
+		logger.debug("Setting value {} for item {}", type.intValue(), itemName);
 		backend.setValue(config, type.intValue());
 	}
 

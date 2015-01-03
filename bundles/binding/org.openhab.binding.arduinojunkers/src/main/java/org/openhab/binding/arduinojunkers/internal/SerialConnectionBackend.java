@@ -49,7 +49,7 @@ public class SerialConnectionBackend implements ConnectionBackend {
 		if (openWrappers.containsKey(config.serialPort)) {
 			return openWrappers.get(config.serialPort);
 		}
-		SerialPortWrapper wrapper = new SerialPortWrapper(config, null);
+		SerialPortWrapper wrapper = new SerialPortWrapper(config);
 		openWrappers.put(config.serialPort, wrapper);
 		return wrapper;
 	}
@@ -58,6 +58,29 @@ public class SerialConnectionBackend implements ConnectionBackend {
 	public void shutdown() {
 		for (SerialPortWrapper wrapper : openWrappers.values()) {
 			wrapper.close();
+		}
+
+	}
+
+	@Override
+	public void requestTemperature(ArduinoJunkersBindingConfig config,
+			TempListener listener) {
+		if (config.itemType != ItemType.TEMP) {
+			return;
+		}
+
+		try {
+			SerialPortWrapper wrapper = getWrapper(config);
+			wrapper.requestTemperature(listener);
+		} catch (NoSuchPortException e) {
+			logger.error("The port {} does not exist", config.serialPort);
+		} catch (PortInUseException e) {
+			logger.error("The port {} is already in use", config.serialPort);
+		} catch (UnsupportedCommOperationException e) {
+			logger.error("Unsupported operation", e);
+		} catch (IOException e) {
+			logger.error("Error while communicating over {}",
+					config.serialPort, e);
 		}
 
 	}
