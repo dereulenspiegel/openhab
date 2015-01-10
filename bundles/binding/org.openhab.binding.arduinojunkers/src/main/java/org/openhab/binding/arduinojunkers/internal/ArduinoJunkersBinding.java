@@ -86,14 +86,19 @@ public class ArduinoJunkersBinding extends
 				.next().getAllTempConfigs();
 		for (final ArduinoJunkersBindingConfig config : tempConfigs) {
 			ConnectionBackend backend = getBackend(config);
-			backend.requestTemperature(config, new TempListener() {
-				@Override
-				public void tempReceived(float temp) {
-					DecimalType update = new DecimalType(temp);
-					eventPublisher.postUpdate(config.itemName, update);
+			if (backend != null) {
+				backend.requestTemperature(config, new TempListener() {
+					@Override
+					public void tempReceived(float temp) {
+						DecimalType update = new DecimalType(temp);
+						eventPublisher.postUpdate(config.itemName, update);
 
-				}
-			});
+					}
+				});
+			} else {
+				logger.error("Couldn't find backend for item {}",
+						config.itemName);
+			}
 		}
 	}
 
@@ -115,9 +120,14 @@ public class ArduinoJunkersBinding extends
 			return;
 		}
 		ConnectionBackend backend = getBackend(config);
-		PercentType type = (PercentType) command;
-		logger.debug("Setting value {} for item {}", type.intValue(), itemName);
-		backend.setValue(config, type.intValue());
+		if (backend != null) {
+			PercentType type = (PercentType) command;
+			logger.debug("Setting value {} for item {}", type.intValue(),
+					itemName);
+			backend.setValue(config, type.intValue());
+		} else {
+			logger.error("Couldn't find matching backend for item {}", itemName);
+		}
 	}
 
 	/**
@@ -128,7 +138,7 @@ public class ArduinoJunkersBinding extends
 		// the code being executed when a state was sent on the openHAB
 		// event bus goes here. This method is only called if one of the
 		// BindingProviders provide a binding for the given 'itemName'.
-		logger.debug("internalReceiveCommand() is called!");
+		logger.debug("internalReceiveCommand() is called! Ignoring");
 	}
 
 	private ConnectionBackend getBackend(ArduinoJunkersBindingConfig config) {

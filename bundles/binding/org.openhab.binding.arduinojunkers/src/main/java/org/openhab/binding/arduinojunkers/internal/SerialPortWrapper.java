@@ -17,7 +17,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.TooManyListenersException;
 
-import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.arduinojunkers.internal.ConnectionBackend.TempListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +47,8 @@ public class SerialPortWrapper implements SerialPortEventListener, Closeable {
 				SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 
 		this.serialPort = serialPort;
+		reader = new BufferedReader(new InputStreamReader(
+				serialPort.getInputStream()));
 
 		try {
 			serialPort.addEventListener(this);
@@ -57,14 +58,13 @@ public class SerialPortWrapper implements SerialPortEventListener, Closeable {
 			try {
 				serialPort.addEventListener(this);
 			} catch (TooManyListenersException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				logger.error(
+						"Can't register listener to read responses, looks like a race condition",
+						e1);
 			}
 		}
 		serialPort.notifyOnDataAvailable(true);
 
-		reader = new BufferedReader(new InputStreamReader(
-				serialPort.getInputStream()));
 		writer = new BufferedWriter(new OutputStreamWriter(
 				serialPort.getOutputStream()));
 	}
@@ -99,8 +99,11 @@ public class SerialPortWrapper implements SerialPortEventListener, Closeable {
 				logger.debug("Received response from Arduino: " + readLine);
 				if (readLine.startsWith("TEMP:")) {
 					float temp = Float.parseFloat(readLine.substring(5));
-					if (tempListener != null) {
-						tempListener.tempReceived(temp);
+					synchronized (tempListener) {
+						if (tempListener != null) {
+							tempListener.tempReceived(temp);
+							tempListener = null;
+						}
 					}
 				} else if (readLine.startsWith("WARNING:")) {
 					logger.warn("Received warning from arduino: {}", readLine);
