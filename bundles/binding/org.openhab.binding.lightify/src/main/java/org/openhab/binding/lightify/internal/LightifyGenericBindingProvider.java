@@ -12,7 +12,7 @@ import java.util.Arrays;
 
 import org.openhab.binding.lightify.LightifyBindingConfig;
 import org.openhab.binding.lightify.LightifyBindingConfig.Type;
-import org.openhab.binding.lightify.LightifyGenericBindingProvider;
+import org.openhab.binding.lightify.LightifyBindingProvider;
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
 import org.openhab.core.library.items.ColorItem;
@@ -20,6 +20,8 @@ import org.openhab.core.library.items.DimmerItem;
 import org.openhab.core.library.items.SwitchItem;
 import org.openhab.model.item.binding.AbstractGenericBindingProvider;
 import org.openhab.model.item.binding.BindingConfigParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is responsible for parsing the binding configuration.
@@ -27,7 +29,9 @@ import org.openhab.model.item.binding.BindingConfigParseException;
  * @author Till Klocke
  * @since 1.9.0
  */
-public class LightifyBindingProvider extends AbstractGenericBindingProvider implements LightifyGenericBindingProvider {
+public class LightifyGenericBindingProvider extends AbstractGenericBindingProvider implements LightifyBindingProvider {
+
+    private final static Logger logger = LoggerFactory.getLogger(LightifyGenericBindingProvider.class);
 
     /**
      * {@inheritDoc}
@@ -50,39 +54,50 @@ public class LightifyBindingProvider extends AbstractGenericBindingProvider impl
     }
 
     /**
-     * Binding config is in the style of {lightify="address=FF:bb:...,type=LUMINANCE,time=60"} {@inheritDoc}
+     * Binding config is in the style of {lightify="FF:bb:...,LUMINANCE,60"}
      */
     @Override
     public void processBindingConfiguration(String context, Item item, String bindingConfig)
             throws BindingConfigParseException {
+        logger.debug("Processing binding config {}", bindingConfig);
         super.processBindingConfiguration(context, item, bindingConfig);
 
         String[] parts = bindingConfig.split(",");
         if (parts.length < 2 || parts.length > 3) {
+            logger.debug("Wrong number of arguments");
             throw new BindingConfigParseException("Can't parse binding config");
         }
         LightifyBindingConfig.Type type = LightifyBindingConfig.Type.valueOf(parts[1]);
+        logger.debug("Binding config type is {}", type);
         if (type == null) {
             throw new BindingConfigParseException("Unknown binding type");
         }
         int time = -1;
         if (parts.length == 3) {
+            logger.debug("Parsing time for transition");
             time = Integer.parseInt(parts[2]);
         }
 
         byte[] address;
-        if (parts[0].contains(":")) {
-            String[] addressParts = parts[0].split(":");
-            if (addressParts.length != 8) {
-                throw new BindingConfigParseException("Illegal address format");
+        try {
+            if (parts[0].contains(":")) {
+                String[] addressParts = parts[0].split(":");
+                if (addressParts.length != 8) {
+                    throw new BindingConfigParseException("Illegal address format");
+                }
+                address = new byte[8];
+                for (int i = 0; i < 8; i++) {
+                    address[i] = (byte) Integer.parseInt(addressParts[i], 16);
+                }
+            } else {
+                address = new byte[] { (byte) Integer.parseInt(parts[0], 16), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x00 };
             }
-            address = new byte[8];
-            for (int i = 0; i < 8; i++) {
-                address[i] = Byte.parseByte(addressParts[i], 16);
-            }
-        } else {
-            address = new byte[] { Byte.parseByte(parts[0], 16), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        } catch (NumberFormatException e) {
+            logger.error("Can't parse address {}", parts[0], e);
+            throw new BindingConfigParseException("Can't parse address");
         }
+        logger.debug("Creating binding config for {}, {}, {} (item {})", parts[0], type, time, item.getName());
 
         LightifyBindingConfig config = new LightifyBindingConfig(address, type, time, item);
         addBindingConfig(item, config);
