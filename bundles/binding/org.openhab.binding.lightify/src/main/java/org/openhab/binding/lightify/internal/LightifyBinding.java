@@ -16,7 +16,7 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.lightify.LightifyBindingConfig;
 import org.openhab.binding.lightify.LightifyBindingConfig.Type;
-import org.openhab.binding.lightify.LightifyGenericBindingProvider;
+import org.openhab.binding.lightify.LightifyBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.binding.BindingProvider;
 import org.openhab.core.library.types.HSBType;
@@ -39,7 +39,7 @@ import de.akuz.lightify.Luminary.ChangeListener;
  * @author Till Klocke
  * @since 1.9.0
  */
-public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindingProvider>
+public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvider>
         implements ManagedService, ChangeListener {
 
     private static final Logger logger = LoggerFactory.getLogger(LightifyBinding.class);
@@ -95,6 +95,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
      */
     @Override
     protected void execute() {
+        logger.debug("Updating state of gateway");
         updateLuminaries(false);
     }
 
@@ -103,59 +104,63 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
      */
     @Override
     protected void internalReceiveCommand(String itemName, Command command) {
+        logger.debug("Received command {} for item {}", command, itemName);
         LightifyBindingConfig config = getBindingConfigForItem(itemName);
         if (config != null) {
             short time = (short) defaultTransitionTime;
             if (config.getTime() != -1) {
                 time = (short) config.getTime();
-                Luminary lum = gateway.getLuminary(config.getAddress());
-                if (lum != null) {
-                    try {
-                        switch (config.getType()) {
-                            case SWITCH:
-                                OnOffType onOffCommand = (OnOffType) command;
-                                lum.setOn(onOffCommand == OnOffType.ON);
-                                break;
-                            case TEMPERATURE:
-                                PercentType percentCommand = (PercentType) command;
-                                lum.setTemperature(percentCommand.shortValue(), time);
-                                break;
-                            case LUMINANCE:
-                                PercentType percentLuminanceCommand = (PercentType) command;
-                                lum.setLuminance(percentLuminanceCommand.byteValue(), time);
-                                break;
-                            case COLOR:
-                                HSBType colorType = (HSBType) command;
-                                byte red = colorType.getRed().byteValue();
-                                byte green = colorType.getGreen().byteValue();
-                                byte blue = colorType.getBlue().byteValue();
-                                lum.setColor(red, green, blue, time);
-                                break;
-
-                        }
-                    } catch (IOException e) {
-                        logger.error("Exception while sending command to Lightify gateway", e);
-                    }
-                }
-
-            } else {
-                logger.warn("Received command for unknown luminary. Item {}", itemName);
             }
-        }
+            Luminary lum = gateway.getLuminary(config.getAddress());
+            if (lum != null) {
+                logger.debug("Found matching luminary, converting openhab command to action");
+                try {
+                    switch (config.getType()) {
+                        case SWITCH:
+                            OnOffType onOffCommand = (OnOffType) command;
+                            lum.setOn(onOffCommand == OnOffType.ON);
+                            break;
+                        case TEMPERATURE:
+                            PercentType percentCommand = (PercentType) command;
+                            lum.setTemperature(percentCommand.shortValue(), time);
+                            break;
+                        case LUMINANCE:
+                            PercentType percentLuminanceCommand = (PercentType) command;
+                            lum.setLuminance(percentLuminanceCommand.byteValue(), time);
+                            break;
+                        case COLOR:
+                            HSBType colorType = (HSBType) command;
+                            byte red = colorType.getRed().byteValue();
+                            byte green = colorType.getGreen().byteValue();
+                            byte blue = colorType.getBlue().byteValue();
+                            lum.setColor(red, green, blue, time);
+                            break;
 
+                    }
+                } catch (IOException e) {
+                    logger.error("Exception while sending command to Lightify gateway", e);
+                }
+            } else {
+                logger.error("Can't find luminary to send command to");
+            }
+
+        } else {
+            logger.warn("Received command for unknown luminary. Item {}", itemName);
+        }
     }
 
-    protected void addBindingProvider(LightifyGenericBindingProvider bindingProvider) {
+    protected void addBindingProvider(LightifyBindingProvider bindingProvider) {
+        logger.debug("Binding provider {} added", bindingProvider.getClass().getCanonicalName());
         super.addBindingProvider(bindingProvider);
     }
 
-    protected void removeBindingProvider(LightifyGenericBindingProvider bindingProvider) {
+    protected void removeBindingProvider(LightifyBindingProvider bindingProvider) {
         super.removeBindingProvider(bindingProvider);
     }
 
     private LightifyBindingConfig getBindingConfigForItem(String itemName) {
         for (BindingProvider provider : this.providers) {
-            LightifyBindingConfig config = ((LightifyGenericBindingProvider) provider).getConfigForItem(itemName);
+            LightifyBindingConfig config = ((LightifyBindingProvider) provider).getConfigForItem(itemName);
             if (config != null) {
                 return config;
             }
@@ -165,8 +170,8 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
 
     private LightifyBindingConfig getBindingConfigAddressAndType(byte[] address, Type type) {
         for (BindingProvider provider : this.providers) {
-            LightifyBindingConfig config = ((LightifyGenericBindingProvider) provider)
-                    .getConfigForAddressAndType(address, type);
+            LightifyBindingConfig config = ((LightifyBindingProvider) provider).getConfigForAddressAndType(address,
+                    type);
             if (config != null) {
                 return config;
             }
@@ -248,7 +253,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
             } catch (IOException e) {
                 throw new ConfigurationException(KEY_HOST, "Can't connect to configured host", e);
             }
-            defaultTransitionTime = Integer.parseInt((String) config.get(KEY_TRANSITION_TIME));
+            // defaultTransitionTime = Integer.parseInt((String) config.get(KEY_TRANSITION_TIME));
             // to override the default refresh interval one has to add a
             // parameter to openhab.cfg like
             // <bindingName>:refresh=<intervalInMs>
@@ -256,7 +261,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
             if (StringUtils.isNotBlank(refreshIntervalString)) {
                 refreshInterval = Long.parseLong(refreshIntervalString);
             }
-
+            logger.debug("Setting properly configured to true");
             setProperlyConfigured(true);
             // read further config parameters here ...
 
