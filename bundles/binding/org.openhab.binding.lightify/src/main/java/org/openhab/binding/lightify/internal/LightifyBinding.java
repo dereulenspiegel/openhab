@@ -95,7 +95,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
      */
     @Override
     protected void execute() {
-        updateLuminaries();
+        updateLuminaries(false);
     }
 
     /**
@@ -174,7 +174,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
         return null;
     }
 
-    private void updateLuminaries() {
+    private void updateLuminaries(boolean print) {
         try {
             List<Light> lights = gateway.refreshAllLights();
             List<Group> groups = gateway.refreshGroups();
@@ -184,6 +184,34 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
             }
             for (Group g : groups) {
                 g.registerListener(this);
+            }
+
+            if (print) {
+                StringBuffer outBuf = new StringBuffer();
+                outBuf.append("\n");
+                for (Light l : lights) {
+                    byte[] addr = l.getAddressBytes();
+                    outBuf.append(String.format("Found Light %s with address ", l.getName()));
+                    for (int i = 0; i < addr.length; i++) {
+                        outBuf.append(String.format("%x", addr[i]));
+                        if (i < addr.length - 1) {
+                            outBuf.append(':');
+                        }
+                    }
+                    outBuf.append('\n');
+                }
+                for (Group g : groups) {
+                    byte[] addr = g.getAddressBytes();
+                    outBuf.append(String.format("Found group %s with address ", g.getName()));
+                    for (int i = 0; i < addr.length; i++) {
+                        outBuf.append(String.format("%x", addr[i]));
+                        if (i < addr.length - 1) {
+                            outBuf.append(':');
+                        }
+                    }
+                    outBuf.append('\n');
+                }
+                logger.info(outBuf.toString());
             }
         } catch (IOException | InterruptedException e) {
             logger.error("Error while updating luminaries", e);
@@ -216,7 +244,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyGenericBindin
             gateway = new Gateway(host);
             try {
                 gateway.connect();
-                updateLuminaries();
+                updateLuminaries(true);
             } catch (IOException e) {
                 throw new ConfigurationException(KEY_HOST, "Can't connect to configured host", e);
             }
