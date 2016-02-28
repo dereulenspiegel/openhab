@@ -15,7 +15,7 @@ import org.openhab.core.binding.BindingProvider;
  * @author Till Klocke
  * @since 1.9.0
  */
-public interface LightifyGenericBindingProvider extends BindingProvider {
+public interface LightifyBindingProvider extends BindingProvider {
 
     public LightifyBindingConfig getConfigForItem(String itemName);
 
