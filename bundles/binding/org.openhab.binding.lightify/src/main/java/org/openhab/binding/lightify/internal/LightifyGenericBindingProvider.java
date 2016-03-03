@@ -10,6 +10,7 @@ package org.openhab.binding.lightify.internal;
 
 import java.util.Arrays;
 
+import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.lightify.LightifyBindingConfig;
 import org.openhab.binding.lightify.LightifyBindingConfig.Type;
 import org.openhab.binding.lightify.LightifyBindingProvider;
@@ -78,7 +79,8 @@ public class LightifyGenericBindingProvider extends AbstractGenericBindingProvid
             time = Integer.parseInt(parts[2]);
         }
 
-        byte[] address;
+        byte[] address = null;
+        String name = null;
         try {
             if (parts[0].contains(":")) {
                 String[] addressParts = parts[0].split(":");
@@ -90,8 +92,12 @@ public class LightifyGenericBindingProvider extends AbstractGenericBindingProvid
                     address[i] = (byte) Integer.parseInt(addressParts[i], 16);
                 }
             } else {
-                address = new byte[] { (byte) Integer.parseInt(parts[0], 16), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                        0x00 };
+                if (parts[0].length() < 3) {
+                    address = new byte[] { (byte) Integer.parseInt(parts[0], 16), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00 };
+                } else {
+                    name = parts[0].trim();
+                }
             }
         } catch (NumberFormatException e) {
             logger.error("Can't parse address {}", parts[0], e);
@@ -99,7 +105,12 @@ public class LightifyGenericBindingProvider extends AbstractGenericBindingProvid
         }
         logger.debug("Creating binding config for {}, {}, {} (item {})", parts[0], type, time, item.getName());
 
-        LightifyBindingConfig config = new LightifyBindingConfig(address, type, time, item);
+        LightifyBindingConfig config;
+        if (StringUtils.isEmpty(bindingConfig)) {
+            config = new LightifyBindingConfig(address, type, time, item);
+        } else {
+            config = new LightifyBindingConfig(name, type, time, item);
+        }
         addBindingConfig(item, config);
     }
 
@@ -116,6 +127,12 @@ public class LightifyGenericBindingProvider extends AbstractGenericBindingProvid
                 return config;
             }
         }
+        return null;
+    }
+
+    @Override
+    public LightifyBindingConfig getConfigForName(String name, Type type) {
+        // TODO Auto-generated method stub
         return null;
     }
 

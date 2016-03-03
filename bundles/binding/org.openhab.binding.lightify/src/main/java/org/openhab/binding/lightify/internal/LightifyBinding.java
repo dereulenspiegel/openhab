@@ -111,7 +111,12 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
             if (config.getTime() != -1) {
                 time = (short) config.getTime();
             }
-            Luminary lum = gateway.getLuminary(config.getAddress());
+            Luminary lum = null;
+            if (config.isAddressIsName()) {
+                lum = gateway.getLuminaryByName(config.getName());
+            } else {
+                lum = gateway.getLuminary(config.getAddress());
+            }
             if (lum != null) {
                 logger.debug("Found matching luminary, converting openhab command to action");
                 try {

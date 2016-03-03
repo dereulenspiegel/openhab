@@ -27,15 +27,26 @@ public class LightifyBindingConfig implements BindingConfig {
     }
 
     private byte[] address;
+    private String name;
     private Type type;
     private Item item;
     private int time;
+    private boolean addressIsName;
 
     public LightifyBindingConfig(byte[] address, Type type, int time, Item item) {
         this.address = address;
         this.type = type;
         this.time = time;
         this.item = item;
+        this.addressIsName = false;
+    }
+
+    public LightifyBindingConfig(String name, Type type, int time, Item item) {
+        this.addressIsName = true;
+        this.name = name;
+        this.type = type;
+        this.item = item;
+        this.time = time;
     }
 
     public byte[] getAddress() {
@@ -68,6 +79,22 @@ public class LightifyBindingConfig implements BindingConfig {
 
     public void setTime(int time) {
         this.time = time;
+    }
+
+    public boolean isAddressIsName() {
+        return addressIsName;
+    }
+
+    public void setAddressIsName(boolean addressIsName) {
+        this.addressIsName = addressIsName;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
 }
