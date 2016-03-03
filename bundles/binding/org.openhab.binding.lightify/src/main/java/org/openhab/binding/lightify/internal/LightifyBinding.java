@@ -195,7 +195,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
             for (Group g : groups) {
                 g.registerListener(this);
             }
-
+            // TODO update items
             if (print) {
                 StringBuffer outBuf = new StringBuffer();
                 outBuf.append("\n");
