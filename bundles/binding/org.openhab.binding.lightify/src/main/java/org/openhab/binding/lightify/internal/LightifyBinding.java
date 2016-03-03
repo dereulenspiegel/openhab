@@ -108,7 +108,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
         LightifyBindingConfig config = getBindingConfigForItem(itemName);
         if (config != null) {
             short time = (short) defaultTransitionTime;
-            if (config.getTime() != -1) {
+            if (config.getTime() > 0) {
                 time = (short) config.getTime();
             }
             Luminary lum = null;
@@ -257,6 +257,10 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
                 updateLuminaries(true);
             } catch (IOException e) {
                 throw new ConfigurationException(KEY_HOST, "Can't connect to configured host", e);
+            }
+            String transitionTimeConfigValue = (String) config.get(KEY_TRANSITION_TIME);
+            if (StringUtils.isNotBlank(transitionTimeConfigValue)) {
+                defaultTransitionTime = Integer.parseInt(transitionTimeConfigValue);
             }
             // defaultTransitionTime = Integer.parseInt((String) config.get(KEY_TRANSITION_TIME));
             // to override the default refresh interval one has to add a
