@@ -21,4 +21,6 @@ public interface LightifyBindingProvider extends BindingProvider {
 
     public LightifyBindingConfig getConfigForAddressAndType(byte[] address, Type type);
 
+    public LightifyBindingConfig getConfigForName(String name, Type type);
+
 }
