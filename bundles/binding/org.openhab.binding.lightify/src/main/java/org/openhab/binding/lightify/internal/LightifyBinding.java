@@ -50,6 +50,9 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
     private final static String KEY_HOST = "host";
     private final static String KEY_TRANSITION_TIME = "transition";
 
+    private final static int MIN_LIGHT_TEMP = 2700; // Very warm light
+    private final static int MAX_LIGHT_TEMP = 6500; // Very cold light
+
     /**
      * the refresh interval which is used to poll values from the lightify gateway
      * (optional, defaults to 60000ms)
@@ -127,7 +130,9 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
                             break;
                         case TEMPERATURE:
                             PercentType percentCommand = (PercentType) command;
-                            lum.setTemperature(percentCommand.shortValue(), time);
+                            int value = ((MAX_LIGHT_TEMP - MIN_LIGHT_TEMP) * percentCommand.intValue() / 100)
+                                    + MIN_LIGHT_TEMP;
+                            lum.setTemperature((short) value, time);
                             break;
                         case LUMINANCE:
                             PercentType percentLuminanceCommand = (PercentType) command;
