@@ -70,11 +70,8 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
     @Override
     public void deactivate() {
         logger.debug("Deactivating lightify binding");
-        try {
-            gateway.disconnect();
-        } catch (IOException e) {
-            logger.error("Error while disconnecting from gateway", e);
-        }
+        gateway.disconnect();
+
     }
 
     /**
@@ -148,6 +145,8 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
 
                     }
                 } catch (IOException e) {
+                    logger.error("Exception while sending command to Lightify gateway", e);
+                } catch (InterruptedException e) {
                     logger.error("Exception while sending command to Lightify gateway", e);
                 }
             } else {
@@ -250,11 +249,7 @@ public class LightifyBinding extends AbstractActiveBinding<LightifyBindingProvid
             }
 
             if (gateway != null) {
-                try {
-                    gateway.disconnect();
-                } catch (IOException e) {
-                    logger.warn("Error while disconnecting from gateway before connecting to new host", e);
-                }
+                gateway.disconnect();
             }
             gateway = new Gateway(host);
             try {
